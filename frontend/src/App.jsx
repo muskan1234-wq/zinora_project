@@ -14,6 +14,7 @@ import Bangles from "./assets/pages/Bangles";
 import BridalFestive from "./assets/pages/BridalFestive";
 import Offers from "./assets/pages/Offers";
 import Budget from "./assets/pages/Budget";
+import Wishlist from "./assets/pages/Wishlist";
 
 import Profile from "./assets/pages/Profile";
 import AdminLogin from "./assets/pages/Admin/AdminLogin";
