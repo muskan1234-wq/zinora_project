@@ -169,14 +169,30 @@ function Topbar() {
           </Box>
 
           {/* WISHLIST */}
-          <IconButton size="small">
-            <FavoriteBorderIcon
-              sx={{
-                fontSize: 24,
-                color: "#5b0b18",
-              }}
-            />
-          </IconButton>
+      
+<IconButton
+  component={Link}
+  to="/wishlist"
+  size="small"
+  aria-label="Open wishlist"
+  sx={{
+    position: "relative",
+    color: "#5b0b18",
+    transition: "all 0.3s ease",
+
+    "&:hover": {
+      backgroundColor: "#f8e9eb",
+      transform: "scale(1.1)",
+    },
+  }}
+>
+  <FavoriteBorderIcon
+    sx={{
+      fontSize: 24,
+      color: "#5b0b18",
+    }}
+  />
+</IconButton>
 
           {/* BAG */}
           <IconButton size="small">
