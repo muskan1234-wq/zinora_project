@@ -13,6 +13,7 @@ import Bangles from "./assets/pages/Bangles";
 import BridalFestive from "./assets/pages/BridalFestive";
 import Offers from "./assets/pages/Offers";
 import Budget from "./assets/pages/Budget";
+import CustomerLogin from "./assets/pages/Customer/CustomerLogin";
 
 function App() {
   return (
@@ -31,6 +32,8 @@ function App() {
         <Route path="/bridal-festive" element={<BridalFestive />} />
         <Route path="/offers" element={<Offers />} />
         <Route path="/budget" element={<Budget />} />
+        <Route path="/customer" element={<CustomerLogin />} />
+        
       </Routes>
     </>
   );
