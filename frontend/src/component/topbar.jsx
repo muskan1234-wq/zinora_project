@@ -29,6 +29,7 @@ import PersonIcon from "@mui/icons-material/Person";
 import ChatOutlinedIcon from "@mui/icons-material/ChatOutlined";
 import CloseIcon from "@mui/icons-material/Close";
 import { Link, useNavigate } from "react-router-dom";
+import { Button } from "@mui/material";
 
 function Topbar() {
   const navigate = useNavigate();
@@ -476,20 +477,20 @@ function Topbar() {
 
           {/* CHAT */}
 
-          <Box
-            sx={{
-              display: { xs: "none", lg: "flex" },
-              alignItems: "center",
-              gap: 0.5,
-              fontSize: "12px",
-              whiteSpace: "nowrap",
-            }}
-          >
-            <ChatOutlinedIcon
-              sx={{ fontSize: 19, color: "#15533f" }}
-            />
-            Chat & Track
-          </Box>
+          <Button
+  onClick={() => navigate("/chat-track")}
+  sx={{
+    color: "#29211e",
+    textTransform: "none",
+    fontWeight: 600,
+    "&:hover": {
+      color: "#a66b48",
+      backgroundColor: "transparent",
+    },
+  }}
+>
+  Chat & Track
+</Button>
 
           {/* WISHLIST */}
 
