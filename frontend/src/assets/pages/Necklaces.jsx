@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useState } from "react";
 import {
   Box,
   Typography,
@@ -22,6 +22,7 @@ import StarIcon from "@mui/icons-material/Star";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 
 const products = [
+  
   {
     name: "The Jodha Royal Kundan Necklace",
     price: "₹1,849",
@@ -29,10 +30,19 @@ const products = [
     rating: "4.9",
     reviews: "128",
     badge: "BESTSELLER",
+
+    category: "Bridal Choker Sets",
+    silhouette: "Choker & Collar Sets",
+    stone: "Uncut Polki",
+    priceRange: "Grand Bridal ₹1,500 - ₹3,500",
+    metal: "Hypoallergenic Pure Brass",
+    weight: "Royal Trousseau > 80 grams",
+
     offer: "57% OFF",
     image:
       "https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&w=700&q=80",
   },
+
   {
     name: "Padmavati Kemp Ruby Heritage",
     price: "₹999",
@@ -40,10 +50,19 @@ const products = [
     rating: "4.8",
     reviews: "89",
     badge: "HERITAGE TEMPLE",
+
+    category: "Temple & Antique Harams",
+    silhouette: "Rani Haar & Long",
+    stone: "Kemp Ruby",
+    priceRange: "Festive Luxury ₹500 - ₹1,499",
+    metal: "Brass",
+    weight: "Royal Trousseau > 80 grams",
+
     offer: "55% OFF",
     image:
       "https://images.unsplash.com/photo-1617038220319-276d3cfab638?auto=format&fit=crop&w=700&q=80",
   },
+
   {
     name: "Noor Dual-Layer Moissanite",
     price: "₹799",
@@ -51,10 +70,19 @@ const products = [
     rating: "4.7",
     reviews: "64",
     badge: "WATERPROOF",
+
+    category: "Minimal Daily Chains",
+    silhouette: "Layered & Tiered Chains",
+    stone: "Moissanite CZ",
+    priceRange: "Festive Luxury ₹500 - ₹1,499",
+    metal: "German Silver Finish",
+    weight: "Medium Partywear 40–80 grams",
+
     offer: "53% OFF",
     image:
       "https://images.unsplash.com/photo-1602173574767-37ac01994b2a?auto=format&fit=crop&w=700&q=80",
   },
+
   {
     name: "Mayuri Peacock Antique Necklace",
     price: "₹1,699",
@@ -62,10 +90,19 @@ const products = [
     rating: "5.0",
     reviews: "41",
     badge: "ROYAL HARAM",
+
+    category: "Temple & Antique Harams",
+    silhouette: "Rani Haar & Long",
+    stone: "Green Onyx",
+    priceRange: "Grand Bridal ₹1,500 - ₹3,500",
+    metal: "Vintage Copper Alloy",
+    weight: "Royal Trousseau > 80 grams",
+
     offer: "51% OFF",
     image:
       "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?auto=format&fit=crop&w=700&q=80",
   },
+
   {
     name: "Gauri Delicate Pearl Collar",
     price: "₹349",
@@ -73,10 +110,19 @@ const products = [
     rating: "4.6",
     reviews: "52",
     badge: "SAREE FAVORITE",
+
+    category: "Pearl & Polki Strings",
+    silhouette: "Princess Length",
+    stone: "Basra Pearls",
+    priceRange: "Budget Picks Under ₹499",
+    metal: "Hypoallergenic Pure Brass",
+    weight: "Lightweight < 40 grams",
+
     offer: "56% OFF",
     image:
       "https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?auto=format&fit=crop&w=700&q=80",
   },
+
   {
     name: "Aanya Micro-Gold Dainty Chain",
     price: "₹249",
@@ -84,10 +130,19 @@ const products = [
     rating: "4.9",
     reviews: "110",
     badge: "DAILY WEAR",
+
+    category: "Minimal Daily Chains",
+    silhouette: "Princess Length",
+    stone: "Meenakari Enamel",
+    priceRange: "Budget Picks Under ₹499",
+    metal: "Hypoallergenic Pure Brass",
+    weight: "Lightweight < 40 grams",
+
     offer: "58% OFF",
     image:
       "https://images.unsplash.com/photo-1596944924616-7b38e7cfac36?auto=format&fit=crop&w=700&q=80",
   },
+
   {
     name: "Rajkumari Green Onyx Necklace",
     price: "₹1,399",
@@ -95,10 +150,19 @@ const products = [
     rating: "4.8",
     reviews: "78",
     badge: "ROYAL JAIPURI",
+
+    category: "Oxidised Silver Necklaces",
+    silhouette: "Hasi & Rigid Torque",
+    stone: "Green Onyx",
+    priceRange: "Festive Luxury ₹500 - ₹1,499",
+    metal: "Vintage Copper Alloy",
+    weight: "Medium Partywear 40–80 grams",
+
     offer: "53% OFF",
     image:
       "https://images.unsplash.com/photo-1611652022419-a9419f74343d?auto=format&fit=crop&w=700&q=80",
   },
+
   {
     name: "Sitara Celestial Star Choker",
     price: "₹599",
@@ -106,6 +170,14 @@ const products = [
     rating: "4.7",
     reviews: "93",
     badge: "TRENDING",
+
+    category: "Bridal Choker Sets",
+    silhouette: "Choker & Collar Sets",
+    stone: "Moissanite CZ",
+    priceRange: "Festive Luxury ₹500 - ₹1,499",
+    metal: "German Silver Finish",
+    weight: "Lightweight < 40 grams",
+
     offer: "54% OFF",
     image:
       "https://images.unsplash.com/photo-1611085583191-a3b181a88401?auto=format&fit=crop&w=700&q=80",
@@ -293,6 +365,120 @@ function ProductCard({ product }) {
 }
 
 function Necklaces() {
+  // ================= FILTER STATES =================
+
+  const [selectedCategory, setSelectedCategory] =
+    useState("All Necklaces 84");
+
+  const [selectedSilhouette, setSelectedSilhouette] =
+    useState([]);
+
+  const [selectedStone, setSelectedStone] =
+    useState([]);
+
+  const [selectedPrice, setSelectedPrice] =
+    useState([]);
+
+  const [selectedMetal, setSelectedMetal] =
+    useState([]);
+
+  const [selectedWeight, setSelectedWeight] =
+    useState([]);
+
+
+  // ================= TOGGLE FUNCTIONS =================
+
+  const toggleSilhouette = (value) => {
+    setSelectedSilhouette((previous) =>
+      previous.includes(value)
+        ? previous.filter((item) => item !== value)
+        : [...previous, value]
+    );
+  };
+
+  const toggleStone = (value) => {
+    setSelectedStone((previous) =>
+      previous.includes(value)
+        ? previous.filter((item) => item !== value)
+        : [...previous, value]
+    );
+  };
+
+  const togglePrice = (value) => {
+    setSelectedPrice((previous) =>
+      previous.includes(value)
+        ? previous.filter((item) => item !== value)
+        : [...previous, value]
+    );
+  };
+
+  const toggleMetal = (value) => {
+    setSelectedMetal((previous) =>
+      previous.includes(value)
+        ? previous.filter((item) => item !== value)
+        : [...previous, value]
+    );
+  };
+
+  const toggleWeight = (value) => {
+    setSelectedWeight((previous) =>
+      previous.includes(value)
+        ? previous.filter((item) => item !== value)
+        : [...previous, value]
+    );
+  };
+
+
+  // ================= ALL FILTERS TOGETHER =================
+
+  const filteredProducts = products.filter((product) => {
+
+    // Category
+    const categoryMatch =
+      selectedCategory === "All Necklaces 84" ||
+      product.category === selectedCategory;
+
+
+    // Silhouette
+    const silhouetteMatch =
+      selectedSilhouette.length === 0 ||
+      selectedSilhouette.includes(product.silhouette);
+
+
+    // Stone
+    const stoneMatch =
+      selectedStone.length === 0 ||
+      selectedStone.includes(product.stone);
+
+
+    // Price
+    const priceMatch =
+      selectedPrice.length === 0 ||
+      selectedPrice.includes(product.priceRange);
+
+
+    // Metal
+    const metalMatch =
+      selectedMetal.length === 0 ||
+      selectedMetal.includes(product.metal);
+
+
+    // Weight
+    const weightMatch =
+      selectedWeight.length === 0 ||
+      selectedWeight.includes(product.weight);
+
+
+    return (
+      categoryMatch &&
+      silhouetteMatch &&
+      stoneMatch &&
+      priceMatch &&
+      metalMatch &&
+      weightMatch
+    );
+  });
+
   return (
     <Box
       sx={{
@@ -494,8 +680,12 @@ function Necklaces() {
               <MenuItem value="featured">
                 Sort: Featured & Bestsellers
               </MenuItem>
-              <MenuItem value="low">Price: Low to High</MenuItem>
-              <MenuItem value="high">Price: High to Low</MenuItem>
+              <MenuItem value="low">
+                Price: Low to High
+              </MenuItem>
+              <MenuItem value="high">
+                Price: High to Low
+              </MenuItem>
             </Select>
           </FormControl>
         </Paper>
@@ -573,12 +763,13 @@ function Necklaces() {
               "Princess Length",
               "Layered & Tiered Chains",
               "Hasi & Rigid Torque",
-            ].map((item, index) => (
+            ].map((item) => (
               <FormControlLabel
                 key={item}
                 control={
                   <Checkbox
-                    defaultChecked={index === 0}
+                    checked={selectedSilhouette.includes(item)}
+                    onChange={() => toggleSilhouette(item)}
                     size="small"
                     sx={{
                       p: 0.3,
@@ -614,7 +805,13 @@ function Necklaces() {
             Stone & Karigari Work
           </Typography>
 
-          <Box sx={{ display: "flex", gap: 0.5, flexWrap: "wrap" }}>
+          <Box
+            sx={{
+              display: "flex",
+              gap: 0.5,
+              flexWrap: "wrap",
+            }}
+          >
             {[
               "Uncut Polki",
               "Moissanite CZ",
@@ -724,6 +921,7 @@ function Necklaces() {
 
           <Divider sx={{ my: 1.5 }} />
 
+          {/* Weight */}
           <Typography
             sx={{
               fontSize: "9px",
@@ -796,7 +994,7 @@ function Necklaces() {
             alignContent: "start",
           }}
         >
-          {products.map((product) => (
+          {filteredProducts.map((product) => (
             <ProductCard
               key={product.name}
               product={product}
@@ -1032,9 +1230,21 @@ function Necklaces() {
         }}
       >
         {[
-          ["♢", "100% Skin Safe Brass", "Zero nickel, lead, hypoallergenic"],
-          ["✧", "1-Year Polish Warranty", "Complimentary replating included"],
-          ["♕", "Handcrafted by Karigars", "Empowering 400+ Rajasthani artisans"],
+          [
+            "♢",
+            "100% Skin Safe Brass",
+            "Zero nickel, lead, hypoallergenic",
+          ],
+          [
+            "✧",
+            "1-Year Polish Warranty",
+            "Complimentary replating included",
+          ],
+          [
+            "♕",
+            "Handcrafted by Karigars",
+            "Empowering 400+ Rajasthani artisans",
+          ],
         ].map(([icon, title, subtitle]) => (
           <Box
             key={title}
@@ -1102,7 +1312,12 @@ function Necklaces() {
           "Handcrafted by Indian Karigars",
         ].map((item) => (
           <Box key={item}>
-            <Typography sx={{ color: "#9a731f", fontSize: "20px" }}>
+            <Typography
+              sx={{
+                color: "#9a731f",
+                fontSize: "20px",
+              }}
+            >
               ✧
             </Typography>
 

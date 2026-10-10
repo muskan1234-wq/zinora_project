@@ -1,1 +1,0 @@
-# zinora_project
