@@ -22,3 +22,21 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+# Python generated files
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Python virtual environments
+venv/
+.venv/
+
+# Local database
+backend/db.sqlite3
+
+# Environment variables and secrets
+.env
+backend/.env
+
+# Node dependencies
+node_modules/

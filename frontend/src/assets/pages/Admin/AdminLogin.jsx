@@ -1,5 +1,6 @@
-
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+
 import {
   Box,
   Paper,
@@ -25,7 +26,13 @@ import {
   ShieldOutlined,
 } from "@mui/icons-material";
 
-export default function AdminLogin() {
+const LOGIN_API = "http://127.0.0.1:8000/api/accounts/login/";
+const ADMIN_DASHBOARD_API =
+  "http://127.0.0.1:8000/api/accounts/admin-dashboard/";
+
+const AdminLogin = () => {
+  const navigate = useNavigate();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -33,6 +40,7 @@ export default function AdminLogin() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  // Admin Login + Backend Dashboard Verification
   const handleLogin = async (event) => {
     event.preventDefault();
     setError("");
@@ -45,20 +53,80 @@ export default function AdminLogin() {
     setLoading(true);
 
     try {
-      // Connect your actual admin login API here.
-      // Example:
-      // const response = await axios.post("/api/admin/login", {
-      //   email,
-      //   password,
-      // });
+      // Step 1: Verify admin credentials
+      const response = await fetch(LOGIN_API, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: email.trim(),
+          password: password,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || "Invalid email or password.");
+        return;
+      }
+
+      // Step 2: Allow only ADMIN accounts
+      if (data.role !== "ADMIN") {
+        setError(
+          "Access denied. This account does not have administrator access."
+        );
+        return;
+      }
+
+      if (!data.token) {
+        setError("Authentication token was not received from the server.");
+        return;
+      }
+
+      // Step 3: Verify the token with the protected Admin Dashboard API
+      const dashboardResponse = await fetch(ADMIN_DASHBOARD_API, {
+        method: "GET",
+        headers: {
+          Authorization: `Token ${data.token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      const dashboardData = await dashboardResponse.json();
+
+      if (!dashboardResponse.ok) {
+        setError(
+          dashboardData.error ||
+            "Admin verification failed. Please check your account permissions."
+        );
+        return;
+      }
+
+      // Step 4: Save admin details only after successful verification
+      const storage = rememberMe ? localStorage : sessionStorage;
+
+      // Clear previous admin login information
+      localStorage.removeItem("zinoraAdminToken");
+      localStorage.removeItem("zinoraAdminRole");
+      localStorage.removeItem("zinoraAdminUsername");
+
+      sessionStorage.removeItem("zinoraAdminToken");
+      sessionStorage.removeItem("zinoraAdminRole");
+      sessionStorage.removeItem("zinoraAdminUsername");
+
+      storage.setItem("zinoraAdminToken", data.token);
+      storage.setItem("zinoraAdminRole", data.role);
+      storage.setItem("zinoraAdminUsername", data.username);
+
+      // Step 5: Open Admin Dashboard
+      navigate("/admin-dashboard", { replace: true });
+    } catch (err) {
+      console.error("Admin login error:", err);
 
       setError(
-        "Login API is not connected yet. Please connect your backend authentication endpoint."
-      );
-    } catch (err) {
-      setError(
-        err.response?.data?.message ||
-          "Unable to log in. Please try again."
+        "Unable to connect to the server. Please check whether Django is running."
       );
     } finally {
       setLoading(false);
@@ -72,86 +140,64 @@ export default function AdminLogin() {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        px: 2,
-        py: 4,
         background:
-          "radial-gradient(circle at 15% 15%, #8c3449 0%, transparent 35%), linear-gradient(135deg, #3e0614 0%, #650c20 50%, #30040f 100%)",
-        fontFamily: "Inter, Arial, sans-serif",
+          "linear-gradient(135deg, #f8f1e8 0%, #efe2d1 50%, #f8f1e8 100%)",
+        p: 2,
       }}
     >
-      <Box
+      <Paper
+        elevation={10}
         sx={{
           width: "100%",
           maxWidth: 1000,
-          display: "grid",
-          gridTemplateColumns: {
-            xs: "1fr",
-            md: "1fr 1fr",
-          },
-          borderRadius: 3,
+          minHeight: 580,
+          display: "flex",
           overflow: "hidden",
-          boxShadow: "0 25px 70px rgba(0,0,0,0.3)",
+          borderRadius: 4,
+          flexDirection: { xs: "column", md: "row" },
         }}
       >
-        {/* Left information panel */}
-
+        {/* LEFT PANEL */}
         <Box
           sx={{
-            p: { xs: 3, sm: 5 },
+            width: { xs: "100%", md: "45%" },
+            background:
+              "linear-gradient(145deg, #4b1020 0%, #711f32 55%, #35101a 100%)",
+            color: "#fff",
+            p: { xs: 4, md: 5 },
             display: "flex",
             flexDirection: "column",
             justifyContent: "space-between",
-            minHeight: { xs: "auto", md: 570 },
-            color: "#fff8f2",
-            background:
-              "linear-gradient(145deg, #72182d 0%, #4a0819 100%)",
           }}
         >
           <Box>
-            {/* Logo */}
-
             <Box
               sx={{
                 display: "flex",
                 alignItems: "center",
                 gap: 1.5,
-                mb: 7,
+                mb: 6,
               }}
             >
-              <Box
-                sx={{
-                  width: 45,
-                  height: 45,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  border: "1px solid #c9ae78",
-                  borderRadius: 1.5,
-                  color: "#d7bc82",
-                }}
-              >
-                <ShieldOutlined sx={{ fontSize: 30 }} />
-              </Box>
+              <AdminPanelSettings
+                sx={{ fontSize: 42, color: "#e6c17a" }}
+              />
 
               <Box>
                 <Typography
+                  variant="h5"
                   sx={{
-                    fontFamily: "Georgia, serif",
-                    fontSize: 25,
-                    fontWeight: 700,
+                    fontWeight: 800,
                     letterSpacing: 3,
-                    color: "#f6e8d5",
+                    color: "#e6c17a",
                   }}
                 >
                   ZINORA
                 </Typography>
 
                 <Typography
-                  sx={{
-                    fontSize: 9,
-                    letterSpacing: 2,
-                    color: "#d9bdab",
-                  }}
+                  variant="caption"
+                  sx={{ letterSpacing: 2, color: "#f1dfc2" }}
                 >
                   IMITATION JEWELLERY
                 </Typography>
@@ -159,133 +205,85 @@ export default function AdminLogin() {
             </Box>
 
             <Typography
+              variant="h3"
               sx={{
-                fontSize: 11,
-                letterSpacing: 2,
-                color: "#d7bc82",
                 fontWeight: 700,
-                mb: 2,
-              }}
-            >
-              ADMINISTRATOR PORTAL
-            </Typography>
-
-            <Typography
-              sx={{
-                fontFamily: "Georgia, serif",
-                fontSize: { xs: 32, sm: 39 },
                 lineHeight: 1.25,
-                fontWeight: 600,
                 mb: 2,
-                color: "#fff8f2",
+                fontSize: { xs: 30, md: 38 },
               }}
             >
-              Welcome to your
+              Welcome Back,
               <br />
-              royal workspace.
+              Administrator.
             </Typography>
 
             <Typography
               sx={{
-                fontSize: 13,
+                color: "#ead7d0",
+                fontSize: 15,
                 lineHeight: 1.9,
-                color: "#e2cfc9",
-                maxWidth: 360,
+                mb: 4,
               }}
             >
-              Manage your jewellery collection, monitor orders,
-              oversee customers, and control your store from
-              one secure administration portal.
+              Manage your jewellery store, products, customers and orders
+              through your dedicated administration panel.
             </Typography>
 
             <Divider
               sx={{
-                my: 4,
-                borderColor: "rgba(255,255,255,0.18)",
+                borderColor: "rgba(230,193,122,0.4)",
+                mb: 3,
               }}
             />
 
-            {[
-              "Product and inventory management",
-              "Customer and order management",
-              "Secure administrative access",
-            ].map((item) => (
-              <Box
-                key={item}
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 1.5,
-                  mb: 2,
-                }}
-              >
-                <Box
-                  sx={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: "50%",
-                    background: "#d7bc82",
-                    flexShrink: 0,
-                  }}
-                />
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+              <ShieldOutlined sx={{ color: "#e6c17a", fontSize: 32 }} />
+
+              <Box>
+                <Typography sx={{ fontWeight: 700 }}>
+                  Secure Administrator Access
+                </Typography>
 
                 <Typography
-                  sx={{
-                    fontSize: 12,
-                    color: "#f1dfd5",
-                  }}
+                  variant="body2"
+                  sx={{ color: "#ead7d0", mt: 0.5 }}
                 >
-                  {item}
+                  Authorized personnel only
                 </Typography>
               </Box>
-            ))}
+            </Box>
           </Box>
 
           <Typography
+            variant="caption"
             sx={{
+              color: "#d6b8b4",
               mt: 5,
-              fontSize: 10,
-              color: "#d3b7ac",
-              letterSpacing: 0.5,
+              textAlign: { xs: "center", md: "left" },
             }}
           >
-            © 2026 ZINORA. ALL RIGHTS RESERVED.
+            © {new Date().getFullYear()} Zinora Jewellery. All rights reserved.
           </Typography>
         </Box>
 
-        {/* Right login panel */}
-
+        {/* RIGHT PANEL - LOGIN FORM */}
         <Box
           sx={{
-            p: { xs: 3, sm: 5 },
+            flex: 1,
+            p: { xs: 3, sm: 5, md: 7 },
             display: "flex",
-            alignItems: "center",
-            background: "#fffdfa",
+            flexDirection: "column",
+            justifyContent: "center",
+            backgroundColor: "#fffdfb",
           }}
         >
-          <Box sx={{ width: "100%", maxWidth: 400, mx: "auto" }}>
-            <Box
-              sx={{
-                width: 55,
-                height: 55,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                borderRadius: 2,
-                background: "#f5e9e9",
-                color: "#650c20",
-                mb: 3,
-              }}
-            >
-              <AdminPanelSettings sx={{ fontSize: 32 }} />
-            </Box>
-
+          <Box sx={{ maxWidth: 390, width: "100%", mx: "auto" }}>
             <Typography
+              variant="h4"
               sx={{
-                fontFamily: "Georgia, serif",
-                fontSize: 30,
-                fontWeight: 600,
-                color: "#571326",
+                fontWeight: 800,
+                color: "#4b1020",
                 mb: 1,
               }}
             >
@@ -294,39 +292,31 @@ export default function AdminLogin() {
 
             <Typography
               sx={{
-                fontSize: 12,
-                lineHeight: 1.8,
-                color: "#8c7774",
+                color: "#82747a",
                 mb: 4,
+                fontSize: 14,
               }}
             >
-              Sign in with your administrator credentials
-              to access the Zinora dashboard.
+              Enter your credentials to access the dashboard.
             </Typography>
 
             {error && (
-              <Alert
-                severity="error"
-                sx={{
-                  mb: 3,
-                  fontSize: 12,
-                  overflowWrap: "anywhere",
-                }}
-              >
+              <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }}>
                 {error}
               </Alert>
             )}
 
             <Box component="form" onSubmit={handleLogin}>
+              {/* EMAIL */}
               <Typography
                 sx={{
-                  fontSize: 11,
-                  fontWeight: 700,
-                  color: "#62494b",
+                  fontWeight: 600,
+                  color: "#4b1020",
                   mb: 1,
+                  fontSize: 14,
                 }}
               >
-                EMAIL ADDRESS
+                Email Address
               </Typography>
 
               <TextField
@@ -337,72 +327,39 @@ export default function AdminLogin() {
                 onChange={(event) => setEmail(event.target.value)}
                 autoComplete="username"
                 required
-                size="small"
+                disabled={loading}
                 sx={{
                   mb: 3,
                   "& .MuiOutlinedInput-root": {
-                    background: "#fbf7f4",
-                    borderRadius: 1.5,
-                    fontSize: 13,
-                    "& fieldset": {
-                      borderColor: "#e8dcd7",
-                    },
+                    borderRadius: 2,
+                    backgroundColor: "#fff",
                     "&.Mui-focused fieldset": {
-                      borderColor: "#650c20",
+                      borderColor: "#711f32",
                     },
                   },
                 }}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <EmailOutlined
-                        sx={{ color: "#987b79", fontSize: 20 }}
-                      />
-                    </InputAdornment>
-                  ),
+                slotProps={{
+                  input: {
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <EmailOutlined sx={{ color: "#8c6670" }} />
+                      </InputAdornment>
+                    ),
+                  },
                 }}
               />
 
-              <Box
+              {/* PASSWORD */}
+              <Typography
                 sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
+                  fontWeight: 600,
+                  color: "#4b1020",
                   mb: 1,
-                  gap: 1,
+                  fontSize: 14,
                 }}
               >
-                <Typography
-                  sx={{
-                    fontSize: 11,
-                    fontWeight: 700,
-                    color: "#62494b",
-                  }}
-                >
-                  PASSWORD
-                </Typography>
-
-                <Typography
-                  component="button"
-                  type="button"
-                  onClick={() =>
-                    setError(
-                      "Please contact your administrator to reset your password."
-                    )
-                  }
-                  sx={{
-                    border: 0,
-                    background: "transparent",
-                    p: 0,
-                    fontSize: 10,
-                    color: "#8a6242",
-                    cursor: "pointer",
-                    fontFamily: "inherit",
-                  }}
-                >
-                  Forgot password?
-                </Typography>
-              </Box>
+                Password
+              </Typography>
 
               <TextField
                 fullWidth
@@ -412,80 +369,81 @@ export default function AdminLogin() {
                 onChange={(event) => setPassword(event.target.value)}
                 autoComplete="current-password"
                 required
-                size="small"
+                disabled={loading}
                 sx={{
                   mb: 1,
                   "& .MuiOutlinedInput-root": {
-                    background: "#fbf7f4",
-                    borderRadius: 1.5,
-                    fontSize: 13,
-                    "& fieldset": {
-                      borderColor: "#e8dcd7",
-                    },
+                    borderRadius: 2,
+                    backgroundColor: "#fff",
                     "&.Mui-focused fieldset": {
-                      borderColor: "#650c20",
+                      borderColor: "#711f32",
                     },
                   },
                 }}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <LockOutlined
-                        sx={{ color: "#987b79", fontSize: 20 }}
-                      />
-                    </InputAdornment>
-                  ),
-
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton
-                        type="button"
-                        size="small"
-                        aria-label={
-                          showPassword ? "Hide password" : "Show password"
-                        }
-                        onClick={() =>
-                          setShowPassword((value) => !value)
-                        }
-                      >
-                        {showPassword ? (
-                          <VisibilityOffOutlined fontSize="small" />
-                        ) : (
-                          <VisibilityOutlined fontSize="small" />
-                        )}
-                      </IconButton>
-                    </InputAdornment>
-                  ),
-                }}
-              />
-
-              <FormControlLabel
-                sx={{
-                  mt: 1,
-                  mb: 3,
-                  "& .MuiFormControlLabel-label": {
-                    fontSize: 11,
-                    color: "#806e6b",
+                slotProps={{
+                  input: {
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <LockOutlined sx={{ color: "#8c6670" }} />
+                      </InputAdornment>
+                    ),
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          onClick={() =>
+                            setShowPassword((previous) => !previous)
+                          }
+                          edge="end"
+                          aria-label={
+                            showPassword ? "Hide password" : "Show password"
+                          }
+                          disabled={loading}
+                        >
+                          {showPassword ? (
+                            <VisibilityOffOutlined />
+                          ) : (
+                            <VisibilityOutlined />
+                          )}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
                   },
                 }}
-                control={
-                  <Checkbox
-                    size="small"
-                    checked={rememberMe}
-                    onChange={(event) =>
-                      setRememberMe(event.target.checked)
-                    }
-                    sx={{
-                      color: "#987b79",
-                      "&.Mui-checked": {
-                        color: "#650c20",
-                      },
-                    }}
-                  />
-                }
-                label="Remember me"
               />
 
+              {/* REMEMBER ME */}
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  mb: 3,
+                }}
+              >
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={rememberMe}
+                      onChange={(event) =>
+                        setRememberMe(event.target.checked)
+                      }
+                      sx={{
+                        color: "#711f32",
+                        "&.Mui-checked": {
+                          color: "#711f32",
+                        },
+                      }}
+                    />
+                  }
+                  label={
+                    <Typography sx={{ fontSize: 13, color: "#6f6267" }}>
+                      Remember me
+                    </Typography>
+                  }
+                />
+              </Box>
+
+              {/* LOGIN BUTTON */}
               <Button
                 fullWidth
                 type="submit"
@@ -493,66 +451,54 @@ export default function AdminLogin() {
                 disabled={loading}
                 endIcon={
                   loading ? (
-                    <CircularProgress size={17} color="inherit" />
+                    <CircularProgress size={19} color="inherit" />
                   ) : (
                     <ArrowForward />
                   )
                 }
                 sx={{
-                  py: 1.5,
-                  borderRadius: 1.5,
-                  background: "#650c20",
-                  color: "#fffaf5",
-                  fontSize: 12,
+                  py: 1.6,
+                  borderRadius: 2,
+                  textTransform: "none",
+                  fontSize: 16,
                   fontWeight: 700,
-                  letterSpacing: 0.5,
-                  boxShadow: "0 5px 15px rgba(101,12,32,0.18)",
+                  background:
+                    "linear-gradient(90deg, #4b1020 0%, #711f32 100%)",
+                  boxShadow: "0 6px 18px rgba(75,16,32,0.2)",
                   "&:hover": {
-                    background: "#480716",
+                    background:
+                      "linear-gradient(90deg, #35101a 0%, #5b1728 100%)",
+                  },
+                  "&.Mui-disabled": {
+                    backgroundColor: "#a78b91",
+                    color: "#fff",
                   },
                 }}
               >
-                {loading ? "SIGNING IN..." : "SIGN IN TO DASHBOARD"}
+                {loading ? "Signing In..." : "Sign In to Dashboard"}
               </Button>
             </Box>
 
-            <Divider sx={{ my: 3, borderColor: "#eee4df" }} />
-
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 1,
-              }}
-            >
-              <ShieldOutlined
-                sx={{ fontSize: 17, color: "#9a8154" }}
-              />
-
-              <Typography
-                sx={{
-                  fontSize: 10,
-                  color: "#887571",
-                }}
-              >
-                Secure administrator authentication
-              </Typography>
-            </Box>
+            <Divider sx={{ my: 3 }} />
 
             <Typography
+              variant="caption"
               sx={{
-                mt: 3,
+                color: "#998990",
+                display: "block",
                 textAlign: "center",
-                fontSize: 11,
-                color: "#8b7772",
+                lineHeight: 1.8,
               }}
             >
-              Not an administrator? Contact your store administrator.
+              This area is restricted to authorized administrators.
+              <br />
+              Your login credentials are verified by the Zinora backend.
             </Typography>
           </Box>
         </Box>
-      </Box>
+      </Paper>
     </Box>
   );
-}
+};
+
+export default AdminLogin;
