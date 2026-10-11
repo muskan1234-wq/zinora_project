@@ -14,6 +14,7 @@ import BridalFestive from "./assets/pages/BridalFestive";
 import Offers from "./assets/pages/Offers";
 import Budget from "./assets/pages/Budget";
 import Wishlist from "./assets/pages/Wishlist";
+import Footer from "./component/Footer";
 
 function App() {
   return (
@@ -34,6 +35,7 @@ function App() {
         <Route path="/budget" element={<Budget />} />
         <Route path="/wishlist" element={<Wishlist />} />
       </Routes>
+      <Footer />
     </>
   );
 }
