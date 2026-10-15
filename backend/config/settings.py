@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework.authtoken',
     'accounts',
+    'offers',
 ]
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -77,9 +78,9 @@ WSGI_APPLICATION = 'config.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'zinora_db',
+        'NAME': 'pratiksha',
         'USER': 'root',
-        'PASSWORD': 'Muskan@2004',  # MySQL password hai toh yahan likho
+        'PASSWORD': 'pass@123',  # MySQL password hai toh yahan likho
         'HOST': 'localhost',
         'PORT': '3306',
     }

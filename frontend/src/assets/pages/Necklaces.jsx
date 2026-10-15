@@ -12,17 +12,16 @@ import {
   MenuItem,
   FormControl,
   Divider,
-  Chip,
   IconButton,
 } from "@mui/material";
 
 import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import FilterListIcon from "@mui/icons-material/FilterList";
 import StarIcon from "@mui/icons-material/Star";
-import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
+
+// ================= PRODUCTS DATA =================
 
 const products = [
-  
   {
     name: "The Jodha Royal Kundan Necklace",
     price: "₹1,849",
@@ -30,19 +29,16 @@ const products = [
     rating: "4.9",
     reviews: "128",
     badge: "BESTSELLER",
-
     category: "Bridal Choker Sets",
     silhouette: "Choker & Collar Sets",
     stone: "Uncut Polki",
     priceRange: "Grand Bridal ₹1,500 - ₹3,500",
     metal: "Hypoallergenic Pure Brass",
     weight: "Royal Trousseau > 80 grams",
-
     offer: "57% OFF",
     image:
       "https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&w=700&q=80",
   },
-
   {
     name: "Padmavati Kemp Ruby Heritage",
     price: "₹999",
@@ -50,19 +46,16 @@ const products = [
     rating: "4.8",
     reviews: "89",
     badge: "HERITAGE TEMPLE",
-
     category: "Temple & Antique Harams",
     silhouette: "Rani Haar & Long",
     stone: "Kemp Ruby",
     priceRange: "Festive Luxury ₹500 - ₹1,499",
     metal: "Brass",
     weight: "Royal Trousseau > 80 grams",
-
     offer: "55% OFF",
     image:
       "https://images.unsplash.com/photo-1617038220319-276d3cfab638?auto=format&fit=crop&w=700&q=80",
   },
-
   {
     name: "Noor Dual-Layer Moissanite",
     price: "₹799",
@@ -70,19 +63,16 @@ const products = [
     rating: "4.7",
     reviews: "64",
     badge: "WATERPROOF",
-
     category: "Minimal Daily Chains",
     silhouette: "Layered & Tiered Chains",
     stone: "Moissanite CZ",
     priceRange: "Festive Luxury ₹500 - ₹1,499",
     metal: "German Silver Finish",
     weight: "Medium Partywear 40–80 grams",
-
     offer: "53% OFF",
     image:
       "https://images.unsplash.com/photo-1602173574767-37ac01994b2a?auto=format&fit=crop&w=700&q=80",
   },
-
   {
     name: "Mayuri Peacock Antique Necklace",
     price: "₹1,699",
@@ -90,19 +80,16 @@ const products = [
     rating: "5.0",
     reviews: "41",
     badge: "ROYAL HARAM",
-
     category: "Temple & Antique Harams",
     silhouette: "Rani Haar & Long",
     stone: "Green Onyx",
     priceRange: "Grand Bridal ₹1,500 - ₹3,500",
     metal: "Vintage Copper Alloy",
     weight: "Royal Trousseau > 80 grams",
-
     offer: "51% OFF",
     image:
       "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?auto=format&fit=crop&w=700&q=80",
   },
-
   {
     name: "Gauri Delicate Pearl Collar",
     price: "₹349",
@@ -110,19 +97,16 @@ const products = [
     rating: "4.6",
     reviews: "52",
     badge: "SAREE FAVORITE",
-
     category: "Pearl & Polki Strings",
     silhouette: "Princess Length",
     stone: "Basra Pearls",
     priceRange: "Budget Picks Under ₹499",
     metal: "Hypoallergenic Pure Brass",
     weight: "Lightweight < 40 grams",
-
     offer: "56% OFF",
     image:
       "https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?auto=format&fit=crop&w=700&q=80",
   },
-
   {
     name: "Aanya Micro-Gold Dainty Chain",
     price: "₹249",
@@ -130,19 +114,16 @@ const products = [
     rating: "4.9",
     reviews: "110",
     badge: "DAILY WEAR",
-
     category: "Minimal Daily Chains",
     silhouette: "Princess Length",
     stone: "Meenakari Enamel",
     priceRange: "Budget Picks Under ₹499",
     metal: "Hypoallergenic Pure Brass",
     weight: "Lightweight < 40 grams",
-
     offer: "58% OFF",
     image:
       "https://images.unsplash.com/photo-1596944924616-7b38e7cfac36?auto=format&fit=crop&w=700&q=80",
   },
-
   {
     name: "Rajkumari Green Onyx Necklace",
     price: "₹1,399",
@@ -150,19 +131,16 @@ const products = [
     rating: "4.8",
     reviews: "78",
     badge: "ROYAL JAIPURI",
-
     category: "Oxidised Silver Necklaces",
     silhouette: "Hasi & Rigid Torque",
     stone: "Green Onyx",
     priceRange: "Festive Luxury ₹500 - ₹1,499",
     metal: "Vintage Copper Alloy",
     weight: "Medium Partywear 40–80 grams",
-
     offer: "53% OFF",
     image:
       "https://images.unsplash.com/photo-1611652022419-a9419f74343d?auto=format&fit=crop&w=700&q=80",
   },
-
   {
     name: "Sitara Celestial Star Choker",
     price: "₹599",
@@ -170,28 +148,19 @@ const products = [
     rating: "4.7",
     reviews: "93",
     badge: "TRENDING",
-
     category: "Bridal Choker Sets",
     silhouette: "Choker & Collar Sets",
     stone: "Moissanite CZ",
     priceRange: "Festive Luxury ₹500 - ₹1,499",
     metal: "German Silver Finish",
     weight: "Lightweight < 40 grams",
-
     offer: "54% OFF",
     image:
       "https://images.unsplash.com/photo-1611085583191-a3b181a88401?auto=format&fit=crop&w=700&q=80",
   },
 ];
 
-const categories = [
-  "All Necklaces 84",
-  "Bridal Choker Sets",
-  "Temple & Antique Harams",
-  "Minimal Daily Chains",
-  "Pearl & Polki Strings",
-  "Oxidised Silver Necklaces",
-];
+// ================= PRODUCT CARD =================
 
 function ProductCard({ product }) {
   return (
@@ -210,10 +179,9 @@ function ProductCard({ product }) {
         },
       }}
     >
-      {/* Image */}
       <Box
         sx={{
-          height: { xs: 180, sm: 210, md: 230 },
+          height: { xs: 200, sm: 210, md: 230 },
           position: "relative",
           backgroundColor: "#eee",
           overflow: "hidden",
@@ -231,14 +199,7 @@ function ProductCard({ product }) {
           }}
         />
 
-        {/* Badge */}
-        <Box
-          sx={{
-            position: "absolute",
-            top: 7,
-            left: 7,
-          }}
-        >
+        <Box sx={{ position: "absolute", top: 7, left: 7 }}>
           <Typography
             sx={{
               backgroundColor: "#6c0d19",
@@ -268,9 +229,9 @@ function ProductCard({ product }) {
           </Typography>
         </Box>
 
-        {/* Wishlist */}
         <IconButton
           size="small"
+          aria-label="Add to wishlist"
           sx={{
             position: "absolute",
             right: 6,
@@ -278,71 +239,50 @@ function ProductCard({ product }) {
             backgroundColor: "#fff",
             width: 27,
             height: 27,
-            "&:hover": {
-              backgroundColor: "#fff",
-            },
+            "&:hover": { backgroundColor: "#fff" },
           }}
         >
           <FavoriteBorderIcon sx={{ fontSize: 16, color: "#777" }} />
         </IconButton>
       </Box>
 
-      {/* Details */}
-      <Box sx={{ p: 1 }}>
+      <Box sx={{ p: 1.2 }}>
         <Box sx={{ display: "flex", alignItems: "center", gap: 0.3 }}>
-          <StarIcon sx={{ fontSize: 11, color: "#d69b00" }} />
-
-          <Typography sx={{ fontSize: "9px", fontWeight: 700 }}>
+          <StarIcon sx={{ fontSize: 13, color: "#d69b00" }} />
+          <Typography sx={{ fontSize: "10px", fontWeight: 700 }}>
             {product.rating}
           </Typography>
-
-          <Typography sx={{ fontSize: "8px", color: "#777" }}>
+          <Typography sx={{ fontSize: "9px", color: "#777" }}>
             ({product.reviews} reviews)
           </Typography>
         </Box>
 
         <Typography
           sx={{
-            fontSize: "11px",
+            fontSize: "12px",
             fontWeight: 600,
             color: "#55101a",
-            mt: 0.5,
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
+            mt: 0.7,
+            minHeight: 32,
           }}
         >
           {product.name}
         </Typography>
 
-        <Typography
-          sx={{
-            fontSize: "7px",
-            color: "#888",
-            mt: 0.3,
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-          }}
-        >
-          Handcrafted premium jewellery with micro-gold finishing...
+        <Typography sx={{ fontSize: "9px", color: "#888", mt: 0.5 }}>
+          Handcrafted premium jewellery with micro-gold finishing.
         </Typography>
 
-        <Box sx={{ display: "flex", alignItems: "center", gap: 0.7, mt: 0.7 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mt: 1 }}>
           <Typography
-            sx={{
-              color: "#6c0d19",
-              fontSize: "13px",
-              fontWeight: 700,
-            }}
+            sx={{ color: "#6c0d19", fontSize: "14px", fontWeight: 700 }}
           >
             {product.price}
           </Typography>
-
           <Typography
             sx={{
               color: "#999",
-              fontSize: "8px",
+              fontSize: "10px",
               textDecoration: "line-through",
             }}
           >
@@ -350,13 +290,7 @@ function ProductCard({ product }) {
           </Typography>
         </Box>
 
-        <Typography
-          sx={{
-            fontSize: "7px",
-            color: "#777",
-            mt: 0.4,
-          }}
-        >
+        <Typography sx={{ fontSize: "9px", color: "#777", mt: 0.6 }}>
           ✓ Free Express Delivery
         </Typography>
       </Box>
@@ -364,120 +298,109 @@ function ProductCard({ product }) {
   );
 }
 
+// ================= NECKLACES PAGE =================
+
 function Necklaces() {
-  // ================= FILTER STATES =================
+  const [selectedSilhouette, setSelectedSilhouette] = useState([]);
+  const [selectedPrice, setSelectedPrice] = useState([]);
+  const [selectedMetal, setSelectedMetal] = useState([]);
+  const [selectedWeight, setSelectedWeight] = useState([]);
+  const [sortBy, setSortBy] = useState("featured");
 
-  const [selectedCategory, setSelectedCategory] =
-    useState("All Necklaces 84");
-
-  const [selectedSilhouette, setSelectedSilhouette] =
-    useState([]);
-
-  const [selectedStone, setSelectedStone] =
-    useState([]);
-
-  const [selectedPrice, setSelectedPrice] =
-    useState([]);
-
-  const [selectedMetal, setSelectedMetal] =
-    useState([]);
-
-  const [selectedWeight, setSelectedWeight] =
-    useState([]);
-
-
-  // ================= TOGGLE FUNCTIONS =================
-
-  const toggleSilhouette = (value) => {
-    setSelectedSilhouette((previous) =>
+  // Checkbox handler
+  const handleFilterChange = (value, setter) => {
+    setter((previous) =>
       previous.includes(value)
         ? previous.filter((item) => item !== value)
         : [...previous, value]
     );
   };
 
-  const toggleStone = (value) => {
-    setSelectedStone((previous) =>
-      previous.includes(value)
-        ? previous.filter((item) => item !== value)
-        : [...previous, value]
-    );
+  // Reset all filters
+  const resetFilters = () => {
+    setSelectedSilhouette([]);
+    setSelectedPrice([]);
+    setSelectedMetal([]);
+    setSelectedWeight([]);
   };
 
-  const togglePrice = (value) => {
-    setSelectedPrice((previous) =>
-      previous.includes(value)
-        ? previous.filter((item) => item !== value)
-        : [...previous, value]
-    );
+  // All filters work together
+  const filteredProducts = products
+    .filter((product) => {
+      const silhouetteMatch =
+        selectedSilhouette.length === 0 ||
+        selectedSilhouette.includes(product.silhouette);
+
+      const priceMatch =
+        selectedPrice.length === 0 ||
+        selectedPrice.includes(product.priceRange);
+
+      const metalMatch =
+        selectedMetal.length === 0 ||
+        selectedMetal.includes(product.metal);
+
+      const weightMatch =
+        selectedWeight.length === 0 ||
+        selectedWeight.includes(product.weight);
+
+      return (
+        silhouetteMatch &&
+        priceMatch &&
+        metalMatch &&
+        weightMatch
+      );
+    })
+    .sort((a, b) => {
+      const priceA = Number(a.price.replace(/[₹,]/g, ""));
+      const priceB = Number(b.price.replace(/[₹,]/g, ""));
+
+      if (sortBy === "low") return priceA - priceB;
+      if (sortBy === "high") return priceB - priceA;
+
+      return 0;
+    });
+
+  const silhouetteOptions = [
+    "Choker & Collar Sets",
+    "Rani Haar & Long",
+    "Princess Length",
+    "Layered & Tiered Chains",
+    "Hasi & Rigid Torque",
+  ];
+
+  const priceOptions = [
+    "Budget Picks Under ₹499",
+    "Festive Luxury ₹500 - ₹1,499",
+    "Grand Bridal ₹1,500 - ₹3,500",
+  ];
+
+  const metalOptions = [
+    "Hypoallergenic Pure Brass",
+    "Brass",
+    "Vintage Copper Alloy",
+    "German Silver Finish",
+  ];
+
+  const weightOptions = [
+    "Lightweight < 40 grams",
+    "Medium Partywear 40–80 grams",
+    "Royal Trousseau > 80 grams",
+  ];
+
+  const filterLabelSx = {
+    "& .MuiFormControlLabel-label": {
+      fontSize: "10px",
+      color: "#51413e",
+    },
+    margin: 0,
+    alignItems: "flex-start",
   };
 
-  const toggleMetal = (value) => {
-    setSelectedMetal((previous) =>
-      previous.includes(value)
-        ? previous.filter((item) => item !== value)
-        : [...previous, value]
-    );
+  const checkboxSx = {
+    color: "#9d8d83",
+    "&.Mui-checked": { color: "#6c0d19" },
+    padding: "3px 6px 3px 0",
   };
-
-  const toggleWeight = (value) => {
-    setSelectedWeight((previous) =>
-      previous.includes(value)
-        ? previous.filter((item) => item !== value)
-        : [...previous, value]
-    );
-  };
-
-
-  // ================= ALL FILTERS TOGETHER =================
-
-  const filteredProducts = products.filter((product) => {
-
-    // Category
-    const categoryMatch =
-      selectedCategory === "All Necklaces 84" ||
-      product.category === selectedCategory;
-
-
-    // Silhouette
-    const silhouetteMatch =
-      selectedSilhouette.length === 0 ||
-      selectedSilhouette.includes(product.silhouette);
-
-
-    // Stone
-    const stoneMatch =
-      selectedStone.length === 0 ||
-      selectedStone.includes(product.stone);
-
-
-    // Price
-    const priceMatch =
-      selectedPrice.length === 0 ||
-      selectedPrice.includes(product.priceRange);
-
-
-    // Metal
-    const metalMatch =
-      selectedMetal.length === 0 ||
-      selectedMetal.includes(product.metal);
-
-
-    // Weight
-    const weightMatch =
-      selectedWeight.length === 0 ||
-      selectedWeight.includes(product.weight);
-
-
-    return (
-      categoryMatch &&
-      silhouetteMatch &&
-      stoneMatch &&
-      priceMatch &&
-      metalMatch &&
-      weightMatch
-    );
-  });
 
   return (
     <Box
@@ -487,231 +410,98 @@ function Necklaces() {
         color: "#4d1717",
       }}
     >
-      {/* ================= PAGE HEADER ================= */}
-      <Box sx={{ px: { xs: 2, md: 4 }, pt: 1.5 }}>
-        {/* Breadcrumb */}
-        <Typography
-          sx={{
-            fontSize: "8px",
-            color: "#9b7a29",
-            mb: 0.8,
-          }}
-        >
+      {/* PAGE HEADER */}
+      <Box sx={{ px: { xs: 2, md: 4 }, pt: 2 }}>
+        <Typography sx={{ fontSize: "10px", color: "#9b7a29", mb: 1 }}>
           Home › Jewellery › Necklaces
         </Typography>
 
-        {/* Main heading area */}
-        <Box
+        <Typography
           sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-start",
-            gap: 3,
+            fontFamily: "Georgia, serif",
+            color: "#560914",
+            fontSize: { xs: "29px", sm: "36px", md: "43px" },
+            lineHeight: 1.1,
+            fontWeight: 500,
           }}
         >
-          <Box>
-            <Typography
-              sx={{
-                fontFamily: "Georgia, serif",
-                color: "#560914",
-                fontSize: {
-                  xs: "28px",
-                  sm: "36px",
-                  md: "43px",
-                },
-                lineHeight: 0.98,
-                fontWeight: 500,
-              }}
-            >
-              Necklaces, Chokers & Royal
-              <br />
-              Harams
-            </Typography>
+          Necklaces, Chokers & Royal
+          <br />
+          Harams
+        </Typography>
 
-            <Typography
-              sx={{
-                mt: 1,
-                maxWidth: 700,
-                color: "#746966",
-                fontSize: "9px",
-                lineHeight: 1.5,
-              }}
-            >
-              Handcrafted heritage Kundan sets, multi-layered temple
-              haarams, and luminous stone chokers shaped by generations
-              of Indian jewellery artisans using heirloom micro-gold
-              plating.
-            </Typography>
-          </Box>
-
-          {/* Royal finish card */}
-          <Paper
-            elevation={0}
-            sx={{
-              display: { xs: "none", md: "flex" },
-              width: 210,
-              p: 1.5,
-              alignItems: "center",
-              gap: 1,
-              border: "1px solid #eee7e0",
-            }}
-          >
-            <Box
-              sx={{
-                width: 32,
-                height: 32,
-                backgroundColor: "#6c0d19",
-                color: "#fff",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                borderRadius: 1,
-              }}
-            >
-              ♙
-            </Box>
-
-            <Box>
-              <Typography
-                sx={{
-                  fontSize: "9px",
-                  fontWeight: 700,
-                  color: "#6c0d19",
-                }}
-              >
-                Authentic Royal Finish
-              </Typography>
-
-              <Typography
-                sx={{
-                  fontSize: "7px",
-                  color: "#777",
-                  mt: 0.3,
-                }}
-              >
-                Micro-maintenance gold with
-                <br />
-                1-Year Polish Guarantee
-              </Typography>
-            </Box>
-          </Paper>
-        </Box>
-
-        {/* Categories */}
-        <Box
+        <Typography
           sx={{
-            display: "flex",
-            gap: 1,
-            mt: 2,
-            overflowX: "auto",
-            pb: 1,
-            "&::-webkit-scrollbar": {
-              display: "none",
-            },
+            mt: 1,
+            maxWidth: 700,
+            color: "#746966",
+            fontSize: "11px",
+            lineHeight: 1.7,
           }}
         >
-          {categories.map((category, index) => (
-            <Button
-              key={category}
-              sx={{
-                flexShrink: 0,
-                textTransform: "none",
-                fontSize: "8px",
-                px: 1.5,
-                py: 0.7,
-                minHeight: 28,
-                borderRadius: "5px",
-                backgroundColor:
-                  index === 0 ? "#650c18" : "#fff",
-                color: index === 0 ? "#fff" : "#6a3333",
-                border:
-                  index === 0
-                    ? "none"
-                    : "1px solid #eee6df",
-                "&:hover": {
-                  backgroundColor:
-                    index === 0 ? "#650c18" : "#f5f0eb",
-                },
-              }}
-            >
-              {category}
-            </Button>
-          ))}
-        </Box>
+          Handcrafted heritage Kundan sets, multi-layered temple haarams,
+          and luminous stone chokers inspired by Indian jewellery artisans.
+        </Typography>
 
-        {/* Product count / sort */}
+        {/* SORT BAR */}
         <Paper
           elevation={0}
           sx={{
             mt: 2,
-            p: 1,
-            px: 1.5,
+            p: 1.2,
             border: "1px solid #eee8e2",
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
+            gap: 1,
+            flexWrap: "wrap",
           }}
         >
-          <Typography
-            sx={{
-              fontSize: "8px",
-              fontWeight: 700,
-              color: "#63101b",
-            }}
-          >
-            84 Handcrafted Pieces
-            <span style={{ color: "#aaa", margin: "0 7px" }}>|</span>
-            Jaipur & Rajkot Ateliers
+          <Typography sx={{ fontSize: "11px", fontWeight: 700 }}>
+            {filteredProducts.length} Products Found
           </Typography>
 
           <FormControl size="small">
             <Select
-              defaultValue="featured"
+              value={sortBy}
+              onChange={(event) => setSortBy(event.target.value)}
               sx={{
-                height: 27,
-                fontSize: "8px",
-                minWidth: 160,
-                backgroundColor: "#fafafa",
-                "& fieldset": {
-                  border: "none",
-                },
+                height: 32,
+                fontSize: "10px",
+                minWidth: 175,
+                backgroundColor: "#fff",
               }}
             >
-              <MenuItem value="featured">
-                Sort: Featured & Bestsellers
-              </MenuItem>
-              <MenuItem value="low">
-                Price: Low to High
-              </MenuItem>
-              <MenuItem value="high">
-                Price: High to Low
-              </MenuItem>
+              <MenuItem value="featured">Sort: Featured</MenuItem>
+              <MenuItem value="low">Price: Low to High</MenuItem>
+              <MenuItem value="high">Price: High to Low</MenuItem>
             </Select>
           </FormControl>
         </Paper>
       </Box>
 
-      {/* ================= PRODUCTS SECTION ================= */}
+      {/* MAIN SECTION */}
       <Box
         sx={{
           px: { xs: 2, md: 4 },
           mt: 2,
+          mb: 4,
           display: "grid",
           gridTemplateColumns: {
             xs: "1fr",
             sm: "190px 1fr",
-            md: "205px 1fr",
+            md: "220px 1fr",
           },
           gap: 2,
+          alignItems: "start",
         }}
       >
-        {/* ================= FILTER SIDEBAR ================= */}
+        {/* FILTER SIDEBAR */}
         <Paper
           elevation={0}
           sx={{
             p: 1.5,
             border: "1px solid #ebe5df",
-            height: "fit-content",
             backgroundColor: "#fff",
           }}
         >
@@ -722,294 +512,194 @@ function Necklaces() {
               alignItems: "center",
             }}
           >
-            <Typography
-              sx={{
-                fontSize: "11px",
-                fontWeight: 700,
-                color: "#5b101c",
-              }}
-            >
-              <FilterListIcon sx={{ fontSize: 12, mr: 0.5 }} />
+            <Typography sx={{ fontSize: "12px", fontWeight: 700 }}>
+              <FilterListIcon sx={{ fontSize: 14, mr: 0.5, verticalAlign: "middle" }} />
               Filters
             </Typography>
 
-            <Typography
+            <Button
+              size="small"
+              onClick={resetFilters}
               sx={{
-                fontSize: "7px",
+                fontSize: "9px",
                 color: "#9a731f",
+                minWidth: "auto",
+                textTransform: "none",
               }}
             >
               RESET ALL
-            </Typography>
+            </Button>
           </Box>
 
-          <Divider sx={{ my: 1 }} />
+          <Divider sx={{ my: 1.3 }} />
 
-          {/* Silhouette */}
-          <Typography
-            sx={{
-              fontSize: "9px",
-              fontWeight: 700,
-              mb: 0.5,
-            }}
-          >
+          {/* SILHOUETTE FILTER */}
+          <Typography sx={{ fontSize: "11px", fontWeight: 700, mb: 0.6 }}>
             Silhouette & Style
           </Typography>
 
           <FormGroup>
-            {[
-              "Choker & Collar Sets",
-              "Rani Haar & Long",
-              "Princess Length",
-              "Layered & Tiered Chains",
-              "Hasi & Rigid Torque",
-            ].map((item) => (
+            {silhouetteOptions.map((item) => (
               <FormControlLabel
                 key={item}
+                sx={filterLabelSx}
                 control={
                   <Checkbox
-                    checked={selectedSilhouette.includes(item)}
-                    onChange={() => toggleSilhouette(item)}
                     size="small"
-                    sx={{
-                      p: 0.3,
-                      "& .MuiSvgIcon-root": {
-                        fontSize: 13,
-                      },
-                    }}
+                    sx={checkboxSx}
+                    checked={selectedSilhouette.includes(item)}
+                    onChange={() =>
+                      handleFilterChange(item, setSelectedSilhouette)
+                    }
                   />
                 }
-                label={
-                  <Typography sx={{ fontSize: "8px" }}>
-                    {item}
-                  </Typography>
-                }
-                sx={{
-                  m: 0,
-                  minHeight: 23,
-                }}
+                label={item}
               />
             ))}
           </FormGroup>
 
-          <Divider sx={{ my: 1.5 }} />
+          <Divider sx={{ my: 1.3 }} />
 
-          {/* Stone */}
-          <Typography
-            sx={{
-              fontSize: "9px",
-              fontWeight: 700,
-              mb: 0.7,
-            }}
-          >
-            Stone & Karigari Work
-          </Typography>
-
-          <Box
-            sx={{
-              display: "flex",
-              gap: 0.5,
-              flexWrap: "wrap",
-            }}
-          >
-            {[
-              "Uncut Polki",
-              "Moissanite CZ",
-              "Kemp Ruby",
-              "Green Onyx",
-              "Basra Pearls",
-              "Meenakari Enamel",
-            ].map((item) => (
-              <Chip
-                key={item}
-                label={item}
-                size="small"
-                sx={{
-                  height: 21,
-                  fontSize: "7px",
-                  backgroundColor: "#f4efea",
-                  color: "#705c56",
-                }}
-              />
-            ))}
-          </Box>
-
-          <Divider sx={{ my: 1.5 }} />
-
-          {/* Price */}
-          <Typography
-            sx={{
-              fontSize: "9px",
-              fontWeight: 700,
-            }}
-          >
+          {/* PRICE FILTER */}
+          <Typography sx={{ fontSize: "11px", fontWeight: 700, mb: 0.6 }}>
             Price Range
           </Typography>
 
           <FormGroup>
-            {[
-              "Budget Picks Under ₹499",
-              "Festive Luxury ₹500 - ₹1,499",
-              "Grand Bridal ₹1,500 - ₹3,500",
-            ].map((item, index) => (
+            {priceOptions.map((item) => (
               <FormControlLabel
                 key={item}
+                sx={filterLabelSx}
                 control={
                   <Checkbox
-                    defaultChecked={index === 1}
                     size="small"
-                    sx={{
-                      p: 0.3,
-                      "& .MuiSvgIcon-root": {
-                        fontSize: 13,
-                      },
-                    }}
+                    sx={checkboxSx}
+                    checked={selectedPrice.includes(item)}
+                    onChange={() => handleFilterChange(item, setSelectedPrice)}
                   />
                 }
-                label={
-                  <Typography sx={{ fontSize: "8px" }}>
-                    {item}
-                  </Typography>
-                }
-                sx={{ m: 0 }}
+                label={item}
               />
             ))}
           </FormGroup>
 
-          <Divider sx={{ my: 1.5 }} />
+          <Divider sx={{ my: 1.3 }} />
 
-          {/* Metal */}
-          <Typography
-            sx={{
-              fontSize: "9px",
-              fontWeight: 700,
-            }}
-          >
+          {/* METAL FILTER */}
+          <Typography sx={{ fontSize: "11px", fontWeight: 700, mb: 0.6 }}>
             Base Metal & Skin Safe
           </Typography>
 
           <FormGroup>
-            {[
-              "Hypoallergenic Pure Brass",
-              "Brass",
-              "Vintage Copper Alloy",
-              "German Silver Finish",
-            ].map((item, index) => (
+            {metalOptions.map((item) => (
               <FormControlLabel
                 key={item}
+                sx={filterLabelSx}
                 control={
                   <Checkbox
-                    defaultChecked={index === 0}
                     size="small"
-                    sx={{
-                      p: 0.3,
-                      "& .MuiSvgIcon-root": {
-                        fontSize: 13,
-                      },
-                    }}
+                    sx={checkboxSx}
+                    checked={selectedMetal.includes(item)}
+                    onChange={() => handleFilterChange(item, setSelectedMetal)}
                   />
                 }
-                label={
-                  <Typography sx={{ fontSize: "8px" }}>
-                    {item}
-                  </Typography>
-                }
-                sx={{ m: 0 }}
+                label={item}
               />
             ))}
           </FormGroup>
 
-          <Divider sx={{ my: 1.5 }} />
+          <Divider sx={{ my: 1.3 }} />
 
-          {/* Weight */}
-          <Typography
-            sx={{
-              fontSize: "9px",
-              fontWeight: 700,
-            }}
-          >
+          {/* WEIGHT FILTER */}
+          <Typography sx={{ fontSize: "11px", fontWeight: 700, mb: 0.6 }}>
             Necklace Weight Profile
           </Typography>
 
-          {[
-            "Lightweight < 40 grams",
-            "Medium Partywear 40–80 grams",
-            "Royal Trousseau > 80 grams",
-          ].map((item) => (
-            <Typography
-              key={item}
-              sx={{
-                fontSize: "8px",
-                color: "#666",
-                mt: 0.7,
-              }}
-            >
-              □ {item}
-            </Typography>
-          ))}
+          <FormGroup>
+            {weightOptions.map((item) => (
+              <FormControlLabel
+                key={item}
+                sx={filterLabelSx}
+                control={
+                  <Checkbox
+                    size="small"
+                    sx={checkboxSx}
+                    checked={selectedWeight.includes(item)}
+                    onChange={() => handleFilterChange(item, setSelectedWeight)}
+                  />
+                }
+                label={item}
+              />
+            ))}
+          </FormGroup>
 
-          <Box
-            sx={{
-              mt: 2,
-              p: 1,
-              backgroundColor: "#fbf7e7",
-              borderRadius: 1,
-              textAlign: "center",
-            }}
-          >
-            <Typography
-              sx={{
-                fontSize: "8px",
-                color: "#6b101c",
-                fontWeight: 700,
-              }}
-            >
-              ♢ 100% Skin Safe Promise
-            </Typography>
+          <Divider sx={{ my: 1.3 }} />
 
-            <Typography
-              sx={{
-                fontSize: "6px",
-                color: "#777",
-                mt: 0.5,
-              }}
-            >
-              Nickel-free, lead-free alloy
-              <br />
-              tested for sensitive skin.
-            </Typography>
-          </Box>
+          <Typography sx={{ fontSize: "10px", color: "#777", lineHeight: 1.6 }}>
+            ♢ Skin-safe jewellery
+            <br />
+            Crafted with care for everyday elegance.
+          </Typography>
         </Paper>
 
-        {/* ================= PRODUCT GRID ================= */}
-        <Box
-          sx={{
-            display: "grid",
-            gridTemplateColumns: {
-              xs: "1fr",
-              sm: "repeat(2, 1fr)",
-              md: "repeat(3, 1fr)",
-            },
-            gap: 1.5,
-            alignContent: "start",
-          }}
-        >
-          {filteredProducts.map((product) => (
-            <ProductCard
-              key={product.name}
-              product={product}
-            />
-          ))}
+        {/* PRODUCT GRID */}
+        <Box>
+          {filteredProducts.length > 0 ? (
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: {
+                  xs: "repeat(2, minmax(0, 1fr))",
+                  md: "repeat(3, minmax(0, 1fr))",
+                },
+                gap: 1.5,
+                alignContent: "start",
+              }}
+            >
+              {filteredProducts.map((product) => (
+                <ProductCard key={product.name} product={product} />
+              ))}
+            </Box>
+          ) : (
+            <Paper
+              elevation={0}
+              sx={{
+                p: 4,
+                textAlign: "center",
+                border: "1px solid #ebe5df",
+                backgroundColor: "#fff",
+              }}
+            >
+              <Typography sx={{ fontSize: "16px", fontWeight: 700 }}>
+                No necklaces found
+              </Typography>
+              <Typography sx={{ fontSize: "12px", color: "#777", mt: 1 }}>
+                Try changing your filters or reset all filters.
+              </Typography>
+              <Button
+                onClick={resetFilters}
+                variant="contained"
+                sx={{
+                  mt: 2,
+                  backgroundColor: "#6c0d19",
+                  textTransform: "none",
+                  "&:hover": { backgroundColor: "#4d0710" },
+                }}
+              >
+                Reset Filters
+              </Button>
+            </Paper>
+          )}
         </Box>
       </Box>
 
-      {/* ================= STYLIST CTA ================= */}
-      <Box sx={{ px: { xs: 2, md: 4 }, mt: 3 }}>
+      {/* STYLIST SECTION */}
+      <Box sx={{ px: { xs: 2, md: 4 }, mb: 4 }}>
         <Paper
           elevation={0}
           sx={{
             backgroundColor: "#f5f2ed",
-            p: 2,
+            p: 2.5,
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
@@ -1018,34 +708,21 @@ function Necklaces() {
           }}
         >
           <Box>
-            <Typography
-              sx={{
-                fontSize: "8px",
-                color: "#9a731f",
-                letterSpacing: 1,
-              }}
-            >
+            <Typography sx={{ fontSize: "10px", color: "#9a731f" }}>
               CAN'T DECIDE YOUR FIT?
             </Typography>
-
             <Typography
               sx={{
                 fontFamily: "Georgia, serif",
-                fontSize: "17px",
+                fontSize: "20px",
                 color: "#6b101c",
+                mt: 0.5,
               }}
             >
               Speak to Our Jewellery Stylist
             </Typography>
-
-            <Typography
-              sx={{
-                fontSize: "7px",
-                color: "#777",
-              }}
-            >
-              Send a photo of your outfit and get personalized
-              recommendations.
+            <Typography sx={{ fontSize: "10px", color: "#777", mt: 0.5 }}>
+              Find a necklace to complement your style.
             </Typography>
           </Box>
 
@@ -1053,211 +730,42 @@ function Necklaces() {
             variant="contained"
             sx={{
               backgroundColor: "#075d39",
-              fontSize: "8px",
+              fontSize: "10px",
               fontWeight: 700,
               textTransform: "none",
-              px: 2,
-              "&:hover": {
-                backgroundColor: "#064c30",
-              },
+              "&:hover": { backgroundColor: "#064c30" },
             }}
           >
-            ▣ STYLE ME ON WHATSAPP
+            STYLE ME ON WHATSAPP
           </Button>
         </Paper>
       </Box>
 
-      {/* ================= STYLING GUIDE ================= */}
+      {/* FOOTER PROMISE STRIP */}
       <Box
         sx={{
-          px: { xs: 2, md: 4 },
-          mt: 5,
-          textAlign: "center",
-        }}
-      >
-        <Typography
-          sx={{
-            color: "#9a731f",
-            fontSize: "8px",
-            letterSpacing: 1,
-          }}
-        >
-          EDITORIAL STYLING GUIDE
-        </Typography>
-
-        <Typography
-          sx={{
-            fontFamily: "Georgia, serif",
-            color: "#560914",
-            fontSize: {
-              xs: "24px",
-              md: "30px",
-            },
-            mt: 0.5,
-          }}
-        >
-          How to Pair Necklaces with Necklines
-        </Typography>
-
-        <Typography
-          sx={{
-            fontSize: "8px",
-            color: "#777",
-            maxWidth: 550,
-            mx: "auto",
-            mt: 0.5,
-          }}
-        >
-          Master the art of proportions. Harmonize your Zinora
-          heirlooms effortlessly with Indian blouses and contemporary
-          Western silhouettes.
-        </Typography>
-
-        <Box
-          sx={{
-            display: "grid",
-            gridTemplateColumns: {
-              xs: "1fr",
-              sm: "repeat(2, 1fr)",
-              md: "repeat(4, 1fr)",
-            },
-            gap: 1.5,
-            mt: 3,
-            textAlign: "left",
-          }}
-        >
-          {[
-            {
-              title: "Deep V-Neck Blouse",
-              text: "PAIRING: LONG HARAM OR Y-DROP",
-            },
-            {
-              title: "Boat & Sabrina Neck",
-              text: "PAIRING: REGAL COLLAR & HASLI",
-            },
-            {
-              title: "Sweetheart Bridal Cut",
-              text: "PAIRING: KUNDAN CHOKER STACK",
-            },
-            {
-              title: "Collar Shirts & Blazers",
-              text: "PAIRING: DUAL DAINTY CZ CHAINS",
-            },
-          ].map((item) => (
-            <Paper
-              key={item.title}
-              elevation={0}
-              sx={{
-                p: 1.5,
-                minHeight: 135,
-                backgroundColor: "#f5f2ed",
-                borderRadius: 1,
-              }}
-            >
-              <Typography
-                sx={{
-                  color: "#6b101c",
-                  fontSize: "10px",
-                  fontWeight: 700,
-                }}
-              >
-                ♡
-              </Typography>
-
-              <Typography
-                sx={{
-                  color: "#6b101c",
-                  fontSize: "10px",
-                  fontWeight: 700,
-                  mt: 1,
-                }}
-              >
-                {item.title}
-              </Typography>
-
-              <Typography
-                sx={{
-                  color: "#9a731f",
-                  fontSize: "8px",
-                  fontWeight: 700,
-                  mt: 0.5,
-                }}
-              >
-                {item.text}
-              </Typography>
-
-              <Typography
-                sx={{
-                  color: "#777",
-                  fontSize: "7px",
-                  lineHeight: 1.5,
-                  mt: 1,
-                }}
-              >
-                The perfect proportions create an elegant silhouette
-                and bring out the beauty of every jewellery piece.
-              </Typography>
-
-              <Typography
-                sx={{
-                  color: "#6b101c",
-                  fontSize: "7px",
-                  fontWeight: 700,
-                  mt: 1,
-                }}
-              >
-                Explore Style →
-              </Typography>
-            </Paper>
-          ))}
-        </Box>
-      </Box>
-
-      {/* ================= PROMISE STRIP ================= */}
-      <Box
-        sx={{
-          mt: 4,
           backgroundColor: "#680b18",
           color: "#fff",
           px: { xs: 2, md: 5 },
-          py: 2,
+          py: 3,
           display: "grid",
-          gridTemplateColumns: {
-            xs: "1fr",
-            md: "repeat(3, 1fr)",
-          },
+          gridTemplateColumns: { xs: "1fr", md: "repeat(3, 1fr)" },
           gap: 2,
         }}
       >
         {[
-          [
-            "♢",
-            "100% Skin Safe Brass",
-            "Zero nickel, lead, hypoallergenic",
-          ],
-          [
-            "✧",
-            "1-Year Polish Warranty",
-            "Complimentary replating included",
-          ],
-          [
-            "♕",
-            "Handcrafted by Karigars",
-            "Empowering 400+ Rajasthani artisans",
-          ],
+          ["♢", "Skin-safe Jewellery", "Thoughtfully selected materials"],
+          ["✧", "Polished Finish", "Made for elegant occasions"],
+          ["♕", "Handcrafted Style", "Inspired by Indian craftsmanship"],
         ].map(([icon, title, subtitle]) => (
           <Box
             key={title}
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              gap: 1,
-            }}
+            sx={{ display: "flex", alignItems: "center", gap: 1.5 }}
           >
             <Box
               sx={{
-                width: 30,
-                height: 30,
+                width: 35,
+                height: 35,
                 backgroundColor: "#8b2634",
                 borderRadius: 1,
                 display: "flex",
@@ -1267,143 +775,16 @@ function Necklaces() {
             >
               {icon}
             </Box>
-
             <Box>
-              <Typography
-                sx={{
-                  fontSize: "10px",
-                  fontWeight: 700,
-                }}
-              >
+              <Typography sx={{ fontSize: "12px", fontWeight: 700 }}>
                 {title}
               </Typography>
-
-              <Typography
-                sx={{
-                  fontSize: "7px",
-                  opacity: 0.8,
-                }}
-              >
+              <Typography sx={{ fontSize: "10px", opacity: 0.8 }}>
                 {subtitle}
               </Typography>
             </Box>
           </Box>
         ))}
-      </Box>
-
-      {/* ================= FEATURE ICONS ================= */}
-      <Box
-        sx={{
-          px: { xs: 2, md: 5 },
-          py: 3,
-          display: "grid",
-          gridTemplateColumns: {
-            xs: "1fr",
-            md: "repeat(3, 1fr)",
-          },
-          textAlign: "center",
-          gap: 3,
-          backgroundColor: "#fff",
-        }}
-      >
-        {[
-          "100% Skin Safe Brass & Copper",
-          "1-Year Polish Warranty",
-          "Handcrafted by Indian Karigars",
-        ].map((item) => (
-          <Box key={item}>
-            <Typography
-              sx={{
-                color: "#9a731f",
-                fontSize: "20px",
-              }}
-            >
-              ✧
-            </Typography>
-
-            <Typography
-              sx={{
-                color: "#6b101c",
-                fontSize: "9px",
-                fontWeight: 700,
-              }}
-            >
-              {item}
-            </Typography>
-
-            <Typography
-              sx={{
-                fontSize: "7px",
-                color: "#777",
-                mt: 0.5,
-              }}
-            >
-              Crafted with care and attention to detail for modern
-              jewellery lovers.
-            </Typography>
-          </Box>
-        ))}
-      </Box>
-
-      {/* ================= NEWSLETTER ================= */}
-      <Box
-        sx={{
-          backgroundColor: "#f6f3ef",
-          px: { xs: 2, md: 5 },
-          py: 3,
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: 2,
-          flexWrap: "wrap",
-        }}
-      >
-        <Box>
-          <Typography
-            sx={{
-              color: "#9a731f",
-              fontSize: "8px",
-              letterSpacing: 1,
-            }}
-          >
-            EXCLUSIVE ROYAL PRIVILEGES
-          </Typography>
-
-          <Typography
-            sx={{
-              color: "#6b101c",
-              fontFamily: "Georgia, serif",
-              fontSize: "20px",
-            }}
-          >
-            Join the Zinora Atelier
-          </Typography>
-
-          <Typography
-            sx={{
-              fontSize: "7px",
-              color: "#777",
-              maxWidth: 450,
-            }}
-          >
-            Sign up to receive private festive collection previews and
-            enjoy an exclusive 15% off your maiden order.
-          </Typography>
-        </Box>
-
-        <Button
-          variant="contained"
-          sx={{
-            backgroundColor: "#680b18",
-            fontSize: "8px",
-            textTransform: "uppercase",
-            "&:hover": {
-              backgroundColor: "#4d0710",
-            },
-          }}
-        >
-          Claim 15% Off →
-        </Button>
       </Box>
     </Box>
   );
