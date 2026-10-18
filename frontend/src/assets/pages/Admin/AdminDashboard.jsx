@@ -367,33 +367,37 @@ backgroundColor: "#f7f5f2",
 
       {/* VIEW CUSTOMER WEBSITE BUTTON — STATIC ON EVERY ADMIN PAGE */}
       <Button
-        variant="outlined"
-        startIcon={<OpenInNewIcon />}
-        onClick={() => window.open("/home", "_blank", "noopener,noreferrer")}
-        sx={{
-          flexShrink: 0,
-          textTransform: "none",
-          whiteSpace: "nowrap",
-          borderRadius: 2,
-          px: { xs: 1, md: 1.5 },
-          py: 0.9,
-          fontSize: { xs: 10, md: 12 },
-          color: MAROON,
-          borderColor: MAROON,
-          fontWeight: 700,
-
-          "& .MuiButton-startIcon": {
-            mr: { xs: 0.5, md: 0.8 },
-          },
-
-          "&:hover": {
-            backgroundColor: "#f8edf0",
-            borderColor: MAROON,
-          },
-        }}
-      >
-        View Customer Website
-      </Button>
+  variant="outlined"
+  startIcon={<OpenInNewIcon />}
+ onClick={() => {
+  window.open(
+    `${window.location.origin}/home`,
+    "_blank",
+    "noopener,noreferrer"
+  );
+}}
+  sx={{
+    flexShrink: 0,
+    textTransform: "none",
+    whiteSpace: "nowrap",
+    borderRadius: 2,
+    px: { xs: 1, md: 1.5 },
+    py: 0.9,
+    fontSize: { xs: 10, md: 12 },
+    color: MAROON,
+    borderColor: MAROON,
+    fontWeight: 700,
+    "& .MuiButton-startIcon": {
+      mr: { xs: 0.5, md: 0.8 },
+    },
+    "&:hover": {
+      backgroundColor: "#f8edf0",
+      borderColor: MAROON,
+    },
+  }}
+>
+  View Customer Website
+</Button>
 
       {/* STATIC SEARCH BAR — AFTER THE CUSTOMER WEBSITE BUTTON */}
       <Box

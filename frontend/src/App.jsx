@@ -63,10 +63,7 @@ function App() {
 
       <Routes>
         {/* Main website opens at Home */}
-<Route
-  path="/"
-  element={<Navigate to="/register" replace />}
-/>
+<Route path="*" element={<Navigate to="/register" replace />} />
         {/* Customer Authentication */}
         <Route path="/register" element={<Register />} />
         <Route path="/login" element={<Login />} />
