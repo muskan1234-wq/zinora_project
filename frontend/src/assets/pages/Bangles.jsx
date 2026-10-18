@@ -1,155 +1,163 @@
-import React, { useState } from "react";
+
+import React, { useEffect, useMemo, useState } from "react";
 
 import {
   Box,
   Typography,
   Button,
   Paper,
-  Checkbox,
   FormControlLabel,
   FormGroup,
+  Checkbox,
   Select,
   MenuItem,
   FormControl,
   Divider,
-  Chip,
-  IconButton,
-  Rating,
+  CircularProgress,
 } from "@mui/material";
 
-import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import FilterListIcon from "@mui/icons-material/FilterList";
 import StarIcon from "@mui/icons-material/Star";
-import CallIcon from "@mui/icons-material/Call";
-import SmsIcon from "@mui/icons-material/Sms";
-import WhatsAppIcon from "@mui/icons-material/WhatsApp";
 
-/* =========================================================
-   9 BANGLE / KADA IMAGES
-   1 HERO IMAGE + 8 PRODUCT IMAGES
-========================================================= */
+const API_BASE = (
+  import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000"
+).replace(/\/+$/, "");
 
-const heroImage ="https://trendia.co/cdn/shop/files/55027834_3.jpg?v=1780295367"
-  
+const PRODUCTS_API = `${API_BASE}/api/products/`;
+const CATEGORIES_API = `${API_BASE}/api/products/categories/`;
 
-const products = [
-  {
-    name: "Devanshi Rajwadi Kada",
-    price: "₹899",
-    oldPrice: "₹1,999",
-    rating: 4.9,
-    reviews: 142,
-    badge: "BESTSELLER",
-    offer: "55% OFF",
-    category: "Rajwadi Openable Kadas",
-    image:
-      "https://www.kairalijewellers.com/media/product_images/966/66275e1a9809e.jpg",
-  },
-  {
-    name: "Padmavati Kemp Ruby Kada",
-    price: "₹649",
-    oldPrice: "₹1,299",
-    rating: 4.8,
-    reviews: 88,
-    badge: "HERITAGE TEMPLE",
-    offer: "50% OFF",
-    category: "Temple & Nakshi Choodas",
-    image:"https://www.chidambaramgoldcovering.com/image/cache/catalog/ChidambaramGoldCovering/bangles/plain-bangles/br1526-latest-flower-pattern-design-ruby-emerald-stone-bangle-for-marriage-wear-buy-online-350-2-425x500.jpg"
-    
-  },
-  {
-    name: "Noor Sleek Tennis Bangle",
-    price: "₹349",
-    oldPrice: "₹799",
-    rating: 4.7,
-    reviews: 210,
-    badge: "WATERPROOF",
-    offer: "56% OFF",
-    category: "Daily Wear Minimal Sleek",
-    image:
-      "https://www.tanishq.com/on/demandware.static/-/Sites-Tanishq-site-catalog/default/dw0e439f98/images/hi-res/513719VDY2A00_1.jpg",
-  },
-  {
-    name: "Aarohi Meenakari Chooda",
-    price: "₹599",
-    oldPrice: "₹1,399",
-    rating: 4.9,
-    reviews: 64,
-    badge: "HAND-PAINTED",
-    offer: "57% OFF",
-    category: "Temple & Nakshi Choodas",
-    image:
-      "https://i.pinimg.com/originals/9e/ef/e4/9eefe407337691bc69596708563fe29e.jpg",
-  },
-  {
-    name: "Jodha Uncut Polki Broad Kada",
-    price: "₹1,299",
-    oldPrice: "₹2,899",
-    rating: 5.0,
-    reviews: 39,
-    badge: "BRIDAL EDITION",
-    offer: "55% OFF",
-    category: "Kundan & Jadau Sets",
-    image:
-      "https://ishhaara.com/cdn/shop/files/ishhaara-golden-bridal-bangles-stack-28388322307490.jpg?v=1749207775&width=700",
-  },
-  {
-    name: "Kaveri Filigree Bangle Pair",
-    price: "₹299",
-    oldPrice: "₹649",
-    rating: 4.6,
-    reviews: 95,
-    badge: "LIGHTWEIGHT",
-    offer: "54% OFF",
-    category: "Daily Wear Minimal Sleek",
-    image:
-      "https://nirankarijewel.com/images/bangles/9.JPG",
-  },
-  {
-    name: "Rhea Classic Eternity Bangle",
-    price: "₹399",
-    oldPrice: "₹899",
-    rating: 4.8,
-    reviews: 115,
-    badge: "STACKABLE",
-    offer: "56% OFF",
-    category: "Daily Wear Minimal Sleek",
-    image:"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQnkBWChGHI6-7ceKJvgPjkn5Txz0LzD8u70FKQSOIbSQ&s"
-  
-  },
-  {
-    name: "Sultana Grand Bridal Kada",
-    price: "₹749",
-    oldPrice: "₹1,699",
-    rating: 4.9,
-    reviews: 78,
-    badge: "BRIDAL STATEMENT",
-    offer: "56% OFF",
-    category: "Kundan & Jadau Sets",
-    image:
-      "https://i.etsystatic.com/26226244/r/il/40473e/7024091860/il_fullxfull.7024091860_4un5.jpg",
-  },
+const heroImage =
+  "https://trendia.co/cdn/shop/files/55027834_3.jpg?v=1780295367";
+
+const sizeOptions = [
+  "2.2 (XS) - 54 mm",
+  "2.4 (S) - 57.2 mm",
+  "2.6 - 60.3 mm",
+  "2.8 (L) - 63.5 mm",
+  "2.10 (XL) - 66.7 mm",
+  "Free-Size / Openable",
 ];
 
-const categories = [
-  "All Bangles & Kadas",
-  "Rajwadi Openable Kadas",
-  "Temple & Nakshi Choodas",
-  "Daily Wear Minimal Sleek",
-  "Kundan & Jadau Sets",
+const priceOptions = [
+  "Under ₹299",
+  "₹299 - ₹699",
+  "₹699 - ₹1,499",
+  "Royal Bridal ₹1,500+",
 ];
 
+const getList = (data) => {
+  if (Array.isArray(data)) return data;
 
-function ProductCard({ product }) {
+  if (Array.isArray(data?.results)) return data.results;
+  if (Array.isArray(data?.products)) return data.products;
+  if (Array.isArray(data?.categories)) return data.categories;
+  if (Array.isArray(data?.data)) return data.data;
+
+  return [];
+};
+
+const getPrice = (price) => {
+  if (typeof price === "number") return price;
+
+  return Number(String(price ?? "").replace(/[₹,\s]/g, "")) || 0;
+};
+
+const formatPrice = (price) =>
+  `₹${getPrice(price).toLocaleString("en-IN")}`;
+
+const getImageUrl = (image) => {
+  if (!image) return "";
+
+  if (typeof image === "object") {
+    image = image.url || image.image || image.src || "";
+  }
+
+  if (typeof image !== "string") return "";
+
+  if (/^https?:\/\//i.test(image)) return image;
+
+  return `${API_BASE}/${image.replace(/^\/+/, "")}`;
+};
+
+const normalizeProduct = (item, index) => {
+  const category =
+    typeof item.category === "object" && item.category !== null
+      ? item.category.name || item.category.title || ""
+      : item.category_name || item.category || "";
+
+  const price = getPrice(
+    item.price ?? item.selling_price ?? item.sale_price ?? 0
+  );
+
+  const oldPrice = getPrice(
+    item.old_price ??
+      item.original_price ??
+      item.mrp ??
+      item.compare_at_price ??
+      0
+  );
+
+  const discount =
+    oldPrice > price && oldPrice > 0
+      ? `${Math.round(((oldPrice - price) / oldPrice) * 100)}% OFF`
+      : "";
+
+  const rawImage =
+    item.image ||
+    item.image_url ||
+    item.product_image ||
+    item.thumbnail ||
+    (Array.isArray(item.images) ? item.images[0] : "");
+
+  const rawSizes = item.sizes || item.available_sizes || [];
+
+  return {
+    id: item.id ?? item.pk ?? index,
+    name:
+      item.name ||
+      item.product_name ||
+      item.title ||
+      "Untitled Product",
+
+    price,
+    oldPrice,
+
+    rating: Number(item.rating ?? item.average_rating ?? 0) || 0,
+
+    reviews: Number(item.reviews ?? item.review_count ?? 0) || 0,
+
+    badge: item.badge || item.tag || item.label || "",
+
+    offer: item.offer || item.discount_label || discount,
+
+    category:
+      typeof category === "string" && category.trim()
+        ? category.trim()
+        : "Uncategorized",
+
+    image: getImageUrl(rawImage),
+
+    sizes: Array.isArray(rawSizes)
+      ? rawSizes.map((size) =>
+          typeof size === "object" ? size.name || size.label || "" : size
+        )
+      : [],
+
+    isActive: item.is_active !== false,
+  };
+};
+
+function ProductCard({ product, bag, onBagToggle }) {
+  const isInBag = bag.includes(String(product.id));
+
   return (
     <Paper
       elevation={0}
       sx={{
         border: "1px solid #ebe5df",
-        borderRadius: "3px",
+        borderRadius: "4px",
         overflow: "hidden",
         backgroundColor: "#fff",
-        position: "relative",
         transition: "0.25s",
         "&:hover": {
           transform: "translateY(-4px)",
@@ -157,348 +165,404 @@ function ProductCard({ product }) {
         },
       }}
     >
-      {/* IMAGE */}
       <Box
         sx={{
-          height: {
-            xs: 180,
-            sm: 190,
-            md: 220,
-          },
+          height: { xs: 160, sm: 190, md: 210 },
           position: "relative",
           backgroundColor: "#f5f2ed",
           overflow: "hidden",
         }}
       >
-        <Box
-          component="img"
-          src={product.image}
-          alt={product.name}
-          sx={{
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
-            display: "block",
-          }}
-        />
+        {product.image ? (
+          <Box
+            component="img"
+            src={product.image}
+            alt={product.name}
+            loading="lazy"
+            onError={(event) => {
+              event.currentTarget.style.display = "none";
+            }}
+            sx={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              display: "block",
+            }}
+          />
+        ) : (
+          <Box
+            sx={{
+              width: "100%",
+              height: "100%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "#987c70",
+              fontSize: 11,
+              p: 2,
+              textAlign: "center",
+            }}
+          >
+            Product image not available
+          </Box>
+        )}
 
-        {/* BADGES */}
         <Box
           sx={{
             position: "absolute",
-            top: 5,
+            top: 6,
             left: 6,
             display: "flex",
             flexDirection: "column",
             alignItems: "flex-start",
-            gap: 0.2,
+            gap: 0.5,
           }}
         >
-          <Typography
-            sx={{
-              backgroundColor: "#650c18",
-              color: "#fff",
-              fontSize: "8px",
-              fontWeight: 500,
-              px: 0.6,
-              py: 0.3,
-            }}
-          >
-            {product.badge}
-          </Typography>
+          {product.badge && (
+            <Typography
+              sx={{
+                backgroundColor: "#650c18",
+                color: "#fff",
+                fontSize: 8,
+                fontWeight: 700,
+                px: 0.7,
+                py: 0.4,
+              }}
+            >
+              {product.badge}
+            </Typography>
+          )}
 
-          <Typography
-            sx={{
-              backgroundColor: "#d50000",
-              color: "#fff",
-              fontSize: "6px",
-              fontWeight: 500,
-              px: 0.6,
-              py: 0.3,
-            }}
-          >
-            {product.offer}
-          </Typography>
+          {product.offer && (
+            <Typography
+              sx={{
+                backgroundColor: "#d50000",
+                color: "#fff",
+                fontSize: 8,
+                fontWeight: 700,
+                px: 0.7,
+                py: 0.4,
+              }}
+            >
+              {product.offer}
+            </Typography>
+          )}
         </Box>
-
-        {/* WISHLIST */}
-        <IconButton
-          sx={{
-            position: "absolute",
-            right: 4,
-            top: 4,
-            width: 20,
-            height: 20,
-            backgroundColor: "#fff",
-            "&:hover": {
-              backgroundColor: "#fff",
-            },
-          }}
-        >
-          <FavoriteBorderIcon
-            sx={{
-              fontSize: 15,
-              color: "#6b101c",
-            }}
-          />
-        </IconButton>
       </Box>
 
-      {/* PRODUCT DETAILS */}
       <Box sx={{ p: 1.3 }}>
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            gap: 0.3,
-          }}
-        >
-          <StarIcon
-            sx={{
-              fontSize: 12,
-              color: "#d39a16",
-            }}
-          />
-
-          <Typography
-            sx={{
-              fontSize: "9px",
-              fontWeight: 700,
-            }}
-          >
-            {product.rating}
-          </Typography>
-
-          <Typography
-            sx={{
-              fontSize: "8px",
-              color: "#777",
-            }}
-          >
-            ({product.reviews} reviews)
-          </Typography>
-        </Box>
-
         <Typography
           sx={{
-            fontSize: "10px",
-            fontWeight: 500,
+            fontSize: 12,
+            fontWeight: 600,
             color: "#5b101c",
-            mt: 0.7,
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
+            minHeight: 34,
           }}
         >
           {product.name}
         </Typography>
 
-        <Typography
-          sx={{
-            fontSize: "8px",
-            color: "#888",
-            mt: 0.4,
-            lineHeight: 1.4,
-          }}
-        >
-          Handcrafted premium bangle with micro-gold finishing and
-          heirloom-inspired detailing.
-        </Typography>
+        {product.rating > 0 && (
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 0.5,
+              flexWrap: "wrap",
+            }}
+          >
+            <StarIcon sx={{ fontSize: 13, color: "#d39a16" }} />
+
+            <Typography sx={{ fontSize: 10, fontWeight: 700 }}>
+              {product.rating.toFixed(1)}
+            </Typography>
+
+            {product.reviews > 0 && (
+              <Typography sx={{ fontSize: 9, color: "#777" }}>
+                ({product.reviews} reviews)
+              </Typography>
+            )}
+          </Box>
+        )}
 
         <Box
           sx={{
             display: "flex",
             alignItems: "center",
-            gap: 0.6,
-            mt: 0.6,
+            gap: 0.7,
+            mt: 0.8,
+            flexWrap: "wrap",
           }}
         >
           <Typography
             sx={{
               color: "#650c18",
-              fontSize: "12px",
-              fontWeight: 500,
-            }}
-          >
-            {product.price}
-          </Typography>
-
-          <Typography
-            sx={{
-              color: "#999",
-              fontSize: "6px",
-              textDecoration: "line-through",
-            }}
-          >
-            {product.oldPrice}
-          </Typography>
-
-          <Typography
-            sx={{
-              color: "#d00000",
-              fontSize: "6px",
-              fontWeight: 500,
-            }}
-          >
-            {product.offer}
-          </Typography>
-        </Box>
-
-        <Typography
-          sx={{
-            fontSize: "6px",
-            color: "#777",
-            mt: 0.6,
-          }}
-        >
-        </Typography>
-      </Box>
-    </Paper>
-  );
-}
-
-
-function ReviewCard({ name, location, text, size }) {
-  return (
-    <Paper
-      elevation={0}
-      sx={{
-        border: "1px solid #ebe5df",
-        p: 2,
-        backgroundColor: "#fff",
-        minHeight: 180,
-      }}
-    >
-      <Typography
-        sx={{
-          color: "#d19a18",
-          fontSize: "13px",
-          letterSpacing: 1,
-        }}
-      >
-        ★★★★★
-      </Typography>
-
-      <Typography
-        sx={{
-          color: "#777",
-          fontSize: "8px",
-          mt: 0.5,
-        }}
-      >
-        Size Bought: {size}
-      </Typography>
-
-      <Typography
-        sx={{
-          color: "#5f5350",
-          fontSize: "10px",
-          lineHeight: 1.7,
-          mt: 1.2,
-          fontStyle: "italic",
-        }}
-      >
-        "{text}"
-      </Typography>
-
-      <Divider sx={{ my: 1.5 }} />
-
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          gap: 1,
-        }}
-      >
-        <Box
-          sx={{
-            width: 28,
-            height: 28,
-            borderRadius: "40%",
-            backgroundColor: "#6c0d19",
-            color: "#fff",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: "8px",
-            fontWeight: 500,
-          }}
-        >
-          {name.substring(0, 2).toUpperCase()}
-        </Box>
-
-        <Box>
-          <Typography
-            sx={{
-              color: "#5b101c",
-              fontSize: "9px",
+              fontSize: 14,
               fontWeight: 700,
             }}
           >
-            {name}, {location}
+            {formatPrice(product.price)}
           </Typography>
 
+          {product.oldPrice > product.price && (
+            <Typography
+              sx={{
+                color: "#999",
+                fontSize: 10,
+                textDecoration: "line-through",
+              }}
+            >
+              {formatPrice(product.oldPrice)}
+            </Typography>
+          )}
+        </Box>
+
+        {product.sizes.length > 0 && (
           <Typography
             sx={{
+              mt: 0.8,
+              fontSize: 9,
               color: "#777",
-              fontSize: "7px",
-              mt: 0.2,
+              lineHeight: 1.6,
             }}
           >
-            ◉ Verified Zinora Purchase
+            Sizes: {product.sizes.join(", ")}
           </Typography>
-        </Box>
+        )}
+
+        <Button
+          fullWidth
+          variant="contained"
+          onClick={() => onBagToggle(String(product.id))}
+          sx={{
+            mt: 1.5,
+            backgroundColor: isInBag ? "#fff" : "#650c18",
+            color: isInBag ? "#650c18" : "#fff",
+            border: "1px solid #650c18",
+            fontSize: 10,
+            fontWeight: 700,
+            borderRadius: "3px",
+            py: 1,
+            boxShadow: "none",
+            "&:hover": {
+              backgroundColor: isInBag ? "#f8eeee" : "#450710",
+              boxShadow: "none",
+            },
+          }}
+        >
+          {isInBag ? "REMOVE FROM BAG" : "ADD TO BAG"}
+        </Button>
       </Box>
     </Paper>
   );
 }
 
-
-
 export default function Bangles() {
-  const [activeCategory, setActiveCategory] =
-    useState("All Bangles & Kadas");
+  const [products, setProducts] = useState([]);
+  const [backendCategories, setBackendCategories] = useState([]);
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [reload, setReload] = useState(0);
+
+  const [activeCategory, setActiveCategory] = useState(
+    "All Bangles & Kadas"
+  );
 
   const [sort, setSort] = useState("featured");
 
-  const filteredProducts =
-    activeCategory === "All Bangles & Kadas"
-      ? products
-      : products.filter(
-          (product) => product.category === activeCategory
-        );
+  const [selectedSizes, setSelectedSizes] = useState([
+    "2.6 - 60.3 mm",
+    "Free-Size / Openable",
+  ]);
 
-  const sortedProducts = [...filteredProducts].sort((a, b) => {
+  const [selectedPrices, setSelectedPrices] = useState([
+    "₹299 - ₹699",
+    "₹699 - ₹1,499",
+  ]);
+
+  const [bag, setBag] = useState([]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadData = async () => {
+      setLoading(true);
+      setError("");
+
+      try {
+        const [productsResponse, categoriesResponse] =
+          await Promise.all([
+            fetch(PRODUCTS_API),
+            fetch(CATEGORIES_API).catch(() => null),
+          ]);
+
+        if (!productsResponse.ok) {
+          throw new Error(
+            `Products API returned HTTP ${productsResponse.status}`
+          );
+        }
+
+        const productsData = await productsResponse.json();
+
+        let categoriesData = [];
+
+        if (categoriesResponse?.ok) {
+          categoriesData = getList(await categoriesResponse.json());
+        }
+
+        const normalizedProducts = getList(productsData)
+          .filter((item) => item.is_active !== false)
+          .map(normalizeProduct);
+
+        const normalizedCategories = categoriesData
+          .filter((item) => item.is_active !== false)
+          .map((item) =>
+            typeof item === "string"
+              ? item
+              : item.name || item.title || ""
+          )
+          .filter(Boolean);
+
+        if (!cancelled) {
+          setProducts(normalizedProducts);
+          setBackendCategories(normalizedCategories);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(
+            err.message ||
+              "Products load nahi ho paye. Backend connection check karo."
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadData();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [reload]);
+
+  const categories = useMemo(() => {
+    const allNames = [
+      ...backendCategories,
+      ...products.map((product) => product.category),
+    ];
+
+    const uniqueNames = [];
+    const seen = new Set();
+
+    allNames.forEach((name) => {
+      const cleanName = String(name || "").trim();
+
+      if (!cleanName) return;
+
+      const key = cleanName.toLowerCase();
+
+      if (
+        key === "uncategorized" ||
+        key === "all bangles & kadas" ||
+        seen.has(key)
+      ) {
+        return;
+      }
+
+      seen.add(key);
+      uniqueNames.push(cleanName);
+    });
+
+    return ["All Bangles & Kadas", ...uniqueNames];
+  }, [backendCategories, products]);
+
+  const handleBagToggle = (id) => {
+    setBag((previous) =>
+      previous.includes(id)
+        ? previous.filter((item) => item !== id)
+        : [...previous, id]
+    );
+  };
+
+  const handleSizeChange = (size) => {
+    setSelectedSizes((previous) =>
+      previous.includes(size)
+        ? previous.filter((item) => item !== size)
+        : [...previous, size]
+    );
+  };
+
+  const handlePriceChange = (price) => {
+    setSelectedPrices((previous) =>
+      previous.includes(price)
+        ? previous.filter((item) => item !== price)
+        : [...previous, price]
+    );
+  };
+
+  const resetFilters = () => {
+    setSelectedSizes([]);
+    setSelectedPrices([]);
+    setActiveCategory("All Bangles & Kadas");
+    setSort("featured");
+  };
+
+  const matchesPrice = (price) => {
+    if (selectedPrices.length === 0) return true;
+
+    const ranges = {
+      "Under ₹299": (value) => value < 299,
+      "₹299 - ₹699": (value) => value >= 299 && value <= 699,
+      "₹699 - ₹1,499": (value) => value > 699 && value <= 1499,
+      "Royal Bridal ₹1,500+": (value) => value >= 1500,
+    };
+
+    return selectedPrices.some((range) => ranges[range]?.(price));
+  };
+
+  const filteredProducts = useMemo(() => {
+    return products.filter((product) => {
+      const categoryMatch =
+        activeCategory === "All Bangles & Kadas" ||
+        product.category.toLowerCase() === activeCategory.toLowerCase();
+
+      const sizeMatch =
+        selectedSizes.length === 0 ||
+        product.sizes.some((size) => selectedSizes.includes(size));
+
+      const priceMatch = matchesPrice(product.price);
+
+      return categoryMatch && sizeMatch && priceMatch;
+    });
+  }, [products, activeCategory, selectedSizes, selectedPrices]);
+
+  const sortedProducts = useMemo(() => {
+    const result = [...filteredProducts];
+
     if (sort === "low") {
-      return (
-        Number(a.price.replace(/[₹,]/g, "")) -
-        Number(b.price.replace(/[₹,]/g, ""))
-      );
+      result.sort((a, b) => a.price - b.price);
+    } else if (sort === "high") {
+      result.sort((a, b) => b.price - a.price);
+    } else if (sort === "rating") {
+      result.sort((a, b) => b.rating - a.rating);
     }
 
-    if (sort === "high") {
-      return (
-        Number(b.price.replace(/[₹,]/g, "")) -
-        Number(a.price.replace(/[₹,]/g, ""))
-      );
-    }
-
-    if (sort === "rating") {
-      return b.rating - a.rating;
-    }
-
-    return 0;
-  });
+    return result;
+  }, [filteredProducts, sort]);
 
   return (
     <Box
       sx={{
         backgroundColor: "#faf9f7",
-        minHeight: "80vh",
+        minHeight: "100vh",
         color: "#4d1717",
       }}
     >
-      
+      {/* HEADER */}
       <Box
         sx={{
           px: { xs: 2, md: 5 },
@@ -506,144 +570,62 @@ export default function Bangles() {
           backgroundColor: "#fff",
           borderBottom: "1px solid #eee6df",
           display: "flex",
-          justifyContent: "space-between",
           alignItems: "center",
-          gap: 2,
+          gap: 1,
         }}
       >
-        {/* LOGO */}
         <Box
           sx={{
+            width: 30,
+            height: 30,
+            border: "1px solid #8c6a25",
+            color: "#650c18",
             display: "flex",
             alignItems: "center",
-            gap: 1,
+            justifyContent: "center",
+            fontFamily: "Georgia, serif",
+            fontSize: 22,
           }}
         >
-          <Box
+          Z
+        </Box>
+
+        <Box>
+          <Typography
             sx={{
-              width: 25,
-              height: 25,
-              border: "1px solid #8c6a25",
-              color: "#650c18",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
               fontFamily: "Georgia, serif",
-              fontSize: "20px",
-              fontWeight: 400,
+              color: "#650c18",
+              fontWeight: 600,
+              fontSize: 16,
+              letterSpacing: 2,
+              lineHeight: 1,
             }}
           >
-            Z
-          </Box>
+            ZINORA
+          </Typography>
 
-          <Box>
-            <Typography
-              sx={{
-                fontFamily: "Georgia, serif",
-                color: "#650c18",
-                fontWeight: 600,
-                fontSize: "14px",
-                letterSpacing: 2,
-                lineHeight: 1,
-              }}
-            >
-              ZINORA
-            </Typography>
-
-            <Typography
-              sx={{
-                color: "#9a731f",
-                fontSize: "5px",
-                letterSpacing: 3,
-                mt: 0.4,
-              }}
-            >
-              ATELIER
-            </Typography>
-          </Box>
-        </Box>
-
-        {/* NAV */}
-        <Box
-          sx={{
-            display: { xs: "none", md: "flex" },
-            gap: 3,
-          }}
-        >
-          {[
-            "Collections",
-            "Bangles & Kadas",
-            "Bridal",
-            "New Arrivals",
-            "Our Craft",
-          ].map((item) => (
-            <Typography
-              key={item}
-              sx={{
-                fontSize: "9px",
-                color:
-                  item === "Bangles & Kadas"
-                    ? "#650c18"
-                    : "#655854",
-                fontWeight:
-                  item === "Bangles & Kadas" ? 700 : 500,
-                cursor: "pointer",
-              }}
-            >
-              {item}
-            </Typography>
-          ))}
-        </Box>
-
-        {/* CONTACT ICONS */}
-        <Box
-          sx={{
-            display: "flex",
-            gap: 0.5,
-          }}
-        >
-          <IconButton
-            size="small"
-            sx={{ color: "#650c18" }}
+          <Typography
+            sx={{
+              color: "#9a731f",
+              fontSize: 7,
+              letterSpacing: 3,
+              mt: 0.5,
+            }}
           >
-            <CallIcon sx={{ fontSize: 17 }} />
-          </IconButton>
-
-          <IconButton
-            size="small"
-            sx={{ color: "#650c18" }}
-          >
-            <SmsIcon sx={{ fontSize: 17 }} />
-          </IconButton>
-
-          <IconButton
-            size="small"
-            sx={{ color: "#168c45" }}
-          >
-            <WhatsAppIcon sx={{ fontSize: 18 }} />
-          </IconButton>
+            ATELIER
+          </Typography>
         </Box>
       </Box>
 
-      
-      <Box
-        sx={{
-          px: { xs: 2, md: 4 },
-          pt: 1.5,
-        }}
-      >
-        {/* BREADCRUMB */}
-
+      {/* PAGE CONTENT */}
+      <Box sx={{ px: { xs: 2, md: 4 }, pt: 1.5, pb: 4 }}>
         <Typography
-          sx={{
-            fontSize: "8px",
-            color: "#9b7a29",
-            mb: 1,
-          }}
+          sx={{ fontSize: 10, color: "#9b7a29", mb: 1.5 }}
         >
           Home › Jewellery › Bangles & Kadas
         </Typography>
 
+        {/* HERO */}
         <Box
           sx={{
             display: "grid",
@@ -652,11 +634,8 @@ export default function Bangles() {
               md: "1.25fr 0.75fr",
             },
             gap: 2,
-            alignItems: "stretch",
           }}
         >
-          {/* LEFT CONTENT */}
-
           <Box
             sx={{
               backgroundColor: "#f6f1eb",
@@ -669,7 +648,7 @@ export default function Bangles() {
             <Typography
               sx={{
                 color: "#9a731f",
-                fontSize: "9px",
+                fontSize: 10,
                 letterSpacing: 1.5,
                 fontWeight: 700,
               }}
@@ -678,16 +657,12 @@ export default function Bangles() {
             </Typography>
 
             <Typography
+              component="h1"
               sx={{
                 fontFamily: "Georgia, serif",
                 color: "#560914",
-                fontSize: {
-                  xs: "30px",
-                  sm: "40px",
-                  md: "47px",
-                },
-                lineHeight: 1.03,
-                fontWeight: 300,
+                fontSize: { xs: 32, sm: 40, md: 47 },
+                lineHeight: 1.1,
                 mt: 1,
               }}
             >
@@ -699,117 +674,21 @@ export default function Bangles() {
             <Typography
               sx={{
                 color: "#746966",
-                fontSize: "9px",
-                lineHeight: 1.7,
-                maxWidth: 620,
+                fontSize: 12,
+                lineHeight: 1.8,
                 mt: 1.5,
               }}
             >
-              Precision-hinged temple carvings, antique Rajwadi
-              kadas, and everyday anti-tarnish micro-gold bangles
-              engineered for effortless slip-on comfort and
-              timeless royal styling.
+              Discover traditional Rajwadi kadas, temple jewellery,
+              bridal bangles and everyday styles with timeless royal
+              elegance.
             </Typography>
-
-            {/* FEATURES */}
-
-            <Box
-              sx={{
-                display: "grid",
-                gridTemplateColumns: {
-                  xs: "1fr",
-                  sm: "repeat(3, 1fr)",
-                },
-                gap: 1,
-                mt: 2,
-              }}
-            >
-              {[
-                ["▣", "ALL SIZES", "(2.2 TO 2.10)"],
-                ["♙", "SCREW-LOCK", "& HINGES"],
-                ["◉", "24K MICRO-GOLD", "DIPPED"],
-              ].map(([icon, title, subtitle]) => (
-                <Box
-                  key={title}
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 0.8,
-                  }}
-                >
-                  <Typography
-                    sx={{
-                      color: "#9a731f",
-                      fontSize: "20px",
-                    }}
-                  >
-                    {icon}
-                  </Typography>
-
-                  <Box>
-                    <Typography
-                      sx={{
-                        fontSize: "7px",
-                        color: "#5b101c",
-                        fontWeight: 700,
-                      }}
-                    >
-                      {title}
-                    </Typography>
-
-                    <Typography
-                      sx={{
-                        fontSize: "7px",
-                        color: "#777",
-                      }}
-                    >
-                      {subtitle}
-                    </Typography>
-                  </Box>
-                </Box>
-              ))}
-            </Box>
-
-            <Divider sx={{ my: 2 }} />
-
-            <Box
-              sx={{
-                display: "flex",
-                flexWrap: "wrap",
-                gap: 1.5,
-              }}
-            >
-              <Typography sx={{ fontSize: "7px" }}>
-                96 Curated Designs
-              </Typography>
-
-              <Typography sx={{ fontSize: "7px" }}>
-                •
-              </Typography>
-
-              <Typography sx={{ fontSize: "7px" }}>
-                ◉ 3-Year Polish Guarantee
-              </Typography>
-
-              <Typography sx={{ fontSize: "7px" }}>
-                •
-              </Typography>
-
-              <Typography sx={{ fontSize: "7px" }}>
-                ▱ Dispatched in 24 Hrs
-              </Typography>
-            </Box>
           </Box>
-
-          {/* HERO IMAGE */}
 
           <Box
             sx={{
               position: "relative",
-              minHeight: {
-                xs: 100,
-                md: 200,
-              },
+              minHeight: { xs: 230, md: 300 },
               overflow: "hidden",
               backgroundColor: "#eee8df",
             }}
@@ -818,9 +697,13 @@ export default function Bangles() {
               component="img"
               src={heroImage}
               alt="Zinora Royal Bangles"
+              onError={(event) => {
+                event.currentTarget.style.display = "none";
+              }}
               sx={{
                 width: "100%",
                 height: "100%",
+                minHeight: { xs: 230, md: 300 },
                 objectFit: "cover",
                 display: "block",
               }}
@@ -829,21 +712,22 @@ export default function Bangles() {
             <Box
               sx={{
                 position: "absolute",
-                bottom: 8,
-                left: 8,
-                right: 8,
+                bottom: 16,
+                left: 16,
+                right: 16,
                 backgroundColor: "rgba(255,255,255,0.95)",
                 p: 1.5,
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "center",
+                gap: 1,
               }}
             >
               <Box>
                 <Typography
                   sx={{
                     color: "#9a731f",
-                    fontSize: "7px",
+                    fontSize: 8,
                     fontWeight: 700,
                     letterSpacing: 1,
                   }}
@@ -854,1125 +738,413 @@ export default function Bangles() {
                 <Typography
                   sx={{
                     color: "#5b101c",
-                    fontSize: "13px",
+                    fontSize: 12,
                     fontWeight: 700,
-                    mt: 0.8,
+                    mt: 0.5,
                   }}
                 >
-                  The Devanshi Grand Elephant Kada
+                  Explore Royal Bangles
                 </Typography>
               </Box>
 
               <Typography
                 sx={{
                   color: "#650c18",
-                  fontSize: "17px",
-                  fontWeight: 700,
+                  fontSize: 11,
+                  fontWeight: 600,
+                  whiteSpace: "nowrap",
                 }}
               >
-                ₹899
+                ZINORA
               </Typography>
             </Box>
           </Box>
         </Box>
 
-        <Box
-          sx={{
-            display: "flex",
-            gap: 1,
-            mt: 2,
-            overflowX: "auto",
-            pb: 1,
-            "&::-webkit-scrollbar": {
-              display: "none",
-            },
-          }}
-        >
-          {categories.map((category) => (
-            <Button
-              key={category}
-              onClick={() => setActiveCategory(category)}
-              sx={{
-                flexShrink: 0,
-                textTransform: "none",
-                fontSize: "15px",
-                px: 1.5,
-                py: 0.8,
-                minHeight: 30,
-                borderRadius: "5px",
-                backgroundColor:
-                  activeCategory === category
-                    ? "#650c18"
-                    : "#fff",
-                color:
-                  activeCategory === category
-                    ? "#fff"
-                    : "#6a3333",
-                border:
-                  activeCategory === category
-                    ? "none"
-                    : "1px solid #eee6df",
-                "&:hover": {
-                  backgroundColor:
-                    activeCategory === category
-                      ? "#650c18"
-                      : "#f5f0eb",
-                },
-              }}
-            >
-              {category}
-            </Button>
-          ))}
-        </Box>
-
-       
-
+        {/* SORTING */}
         <Paper
           elevation={0}
           sx={{
-            mt: 1,
-            p: 1,
-            px: 1.5,
+            mt: 2,
+            p: 1.5,
             border: "1px solid #eee8e2",
             display: "flex",
-            alignItems: "center",
             justifyContent: "space-between",
             gap: 1,
+            flexWrap: "wrap",
           }}
         >
-          <Typography
-            sx={{
-              fontSize: "8px",
-              fontWeight: 700,
-              color: "#63101b",
-            }}
-          >
-            {sortedProducts.length} Handcrafted Pieces
-            <span
-              style={{
-                color: "#aaa",
-                margin: "0 7px",
-              }}
+          <Typography sx={{ fontSize: 11, fontWeight: 700 }}>
+            {loading ? "Loading products..." : `${sortedProducts.length} Pieces`}
+            <Box
+              component="span"
+              sx={{ color: "#aaa", mx: 1 }}
             >
               |
-            </span>
+            </Box>
             Jaipur & Rajkot Ateliers
           </Typography>
 
           <FormControl size="small">
             <Select
               value={sort}
-              onChange={(e) => setSort(e.target.value)}
+              onChange={(event) => setSort(event.target.value)}
+              inputProps={{ "aria-label": "Sort products" }}
               sx={{
-                height: 28,
-                fontSize: "8px",
-                minWidth: 170,
-                backgroundColor: "#fafafa",
-                "& fieldset": {
-                  border: "none",
-                },
+                height: 34,
+                fontSize: 11,
+                minWidth: { xs: 155, sm: 190 },
+                backgroundColor: "#fff",
               }}
             >
               <MenuItem value="featured">
                 Sort: Featured & Bestsellers
               </MenuItem>
-
-              <MenuItem value="low">
-                Price: Low to High
-              </MenuItem>
-
-              <MenuItem value="high">
-                Price: High to Low
-              </MenuItem>
-
-              <MenuItem value="rating">
-                Top Rated
-              </MenuItem>
+              <MenuItem value="low">Price: Low to High</MenuItem>
+              <MenuItem value="high">Price: High to Low</MenuItem>
+              <MenuItem value="rating">Top Rated</MenuItem>
             </Select>
           </FormControl>
         </Paper>
-      </Box>
 
-      
-      <Box
-        sx={{
-          px: { xs: 2, md: 4 },
-          mt: 2,
-          display: "grid",
-          gridTemplateColumns: {
-            xs: "1fr",
-            md: "205px 1fr",
-          },
-          gap: 2,
-        }}
-      >
-        {/* SIDEBAR */}
-
-        <Paper
-          elevation={0}
+        {/* SIDEBAR + PRODUCTS */}
+        <Box
           sx={{
-            p: 1.5,
-            border: "1px solid #ebe5df",
-            height: "fit-content",
-            backgroundColor: "#fff",
+            mt: 2,
+            display: "grid",
+            gridTemplateColumns: {
+              xs: "1fr",
+              md: "220px minmax(0, 1fr)",
+            },
+            gap: 2,
+            alignItems: "start",
           }}
         >
+          {/* SIDEBAR */}
           <Box
             sx={{
               display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
+              flexDirection: "column",
+              gap: 2,
+              minWidth: 0,
             }}
           >
-            <Typography
-              sx={{
-                fontSize: "11px",
-                fontWeight: 700,
-                color: "#5b101c",
-                display: "flex",
-                alignItems: "center",
-              }}
-            >
-              <FilterListIcon
-                sx={{
-                  fontSize: 14,
-                  mr: 0.5,
-                }}
-              />
-              Filters
-            </Typography>
-
-            <Typography
-              sx={{
-                fontSize: "7px",
-                color: "#9a731f",
-                cursor: "pointer",
-              }}
-            >
-              RESET ALL
-            </Typography>
-          </Box>
-
-          <Divider sx={{ my: 1 }} />
-
-          {/* SIZE */}
-
-          <Typography
-            sx={{
-              fontSize: "9px",
-              fontWeight: 700,
-              mb: 0.5,
-            }}
-          >
-            Bangle Size
-          </Typography>
-
-          <FormGroup>
-            {[
-              "2.2 (XS) - 54 mm",
-              "2.4 (S) - 57.2 mm",
-              "2.6 - 60.3 mm",
-              "2.8 (L) - 63.5 mm",
-              "2.10 (XL) - 66.7 mm",
-              "Free-Size / Openable",
-            ].map((item, index) => (
-              <FormControlLabel
-                key={item}
-                control={
-                  <Checkbox
-                    defaultChecked={index === 2 || index === 5}
-                    size="small"
-                    sx={{
-                      p: 0.3,
-                      "& .MuiSvgIcon-root": {
-                        fontSize: 13,
-                      },
-                    }}
-                  />
-                }
-                label={
-                  <Typography sx={{ fontSize: "8px" }}>
-                    {item}
-                  </Typography>
-                }
-                sx={{
-                  m: 0,
-                  minHeight: 23,
-                }}
-              />
-            ))}
-          </FormGroup>
-
-          <Divider sx={{ my: 1.5 }} />
-
-          {/* MECHANISM */}
-
-          <Typography
-            sx={{
-              fontSize: "9px",
-              fontWeight: 700,
-              mb: 0.7,
-            }}
-          >
-            Mechanism & Lock
-          </Typography>
-
-          {[
-            "Traditional Screw-Lock",
-            "Side Push-Spring Hinge",
-            "Magnetic Luxury Clasp",
-            "Slip-On Solid Core",
-          ].map((item, index) => (
-            <FormControlLabel
-              key={item}
-              control={
-                <Checkbox
-                  defaultChecked={index === 1}
-                  size="small"
-                  sx={{
-                    p: 0.3,
-                    "& .MuiSvgIcon-root": {
-                      fontSize: 13,
-                    },
-                  }}
-                />
-              }
-              label={
-                <Typography sx={{ fontSize: "8px" }}>
-                  {item}
-                </Typography>
-              }
-              sx={{
-                m: 0,
-                display: "flex",
-              }}
-            />
-          ))}
-
-          <Divider sx={{ my: 1.5 }} />
-
-          {/* WORK */}
-
-          <Typography
-            sx={{
-              fontSize: "9px",
-              fontWeight: 700,
-              mb: 0.7,
-            }}
-          >
-            Karigari & Finish
-          </Typography>
-
-          <Box
-            sx={{
-              display: "flex",
-              gap: 0.5,
-              flexWrap: "wrap",
-            }}
-          >
-            {[
-              "Kundan",
-              "Jadau",
-              "Meenakari",
-              "Temple",
-              "Polki",
-              "CZ",
-              "Ruby",
-              "Pearl",
-            ].map((item) => (
-              <Chip
-                key={item}
-                label={item}
-                size="small"
-                sx={{
-                  height: 21,
-                  fontSize: "7px",
-                  backgroundColor: "#f4efea",
-                  color: "#705c56",
-                }}
-              />
-            ))}
-          </Box>
-
-          <Divider sx={{ my: 1.5 }} />
-
-          {/* PRICE */}
-
-          <Typography
-            sx={{
-              fontSize: "9px",
-              fontWeight: 700,
-            }}
-          >
-            Price Range
-          </Typography>
-
-          <FormGroup>
-            {[
-              "Under ₹299",
-              "₹299 - ₹699",
-              "₹699 - ₹1,499",
-              "Royal Bridal ₹1,500+",
-            ].map((item, index) => (
-              <FormControlLabel
-                key={item}
-                control={
-                  <Checkbox
-                    defaultChecked={
-                      index === 1 || index === 2
-                    }
-                    size="small"
-                    sx={{
-                      p: 0.3,
-                      "& .MuiSvgIcon-root": {
-                        fontSize: 13,
-                      },
-                    }}
-                  />
-                }
-                label={
-                  <Typography sx={{ fontSize: "8px" }}>
-                    {item}
-                  </Typography>
-                }
-                sx={{ m: 0 }}
-              />
-            ))}
-          </FormGroup>
-
-          <Divider sx={{ my: 1.5 }} />
-
-          {/* PROMISE */}
-
-          <Box
-            sx={{
-              mt: 1,
-              p: 1.2,
-              backgroundColor: "#fbf7e7",
-              borderRadius: 1,
-              textAlign: "center",
-            }}
-          >
-            <Typography
-              sx={{
-                fontSize: "8px",
-                color: "#6b101c",
-                fontWeight: 700,
-              }}
-            >
-              ♢ Zero Wrist-Pinch Promise
-            </Typography>
-
-            <Typography
-              sx={{
-                fontSize: "7px",
-                color: "#777",
-                mt: 0.5,
-                lineHeight: 1.8,
-              }}
-            >
-              Concealed internal screws and
-              <br />
-              smooth finishing for comfort.
-            </Typography>
-          </Box>
-        </Paper>
-
-        
-
-        <Box>
-          <Box
-            sx={{
-              display: "grid",
-              gridTemplateColumns: {
-                xs: "1fr",
-                sm: "repeat(2, 1fr)",
-                lg: "repeat(4, 1fr)",
-              },
-              gap: 1.5,
-              alignContent: "start",
-            }}
-          >
-            {sortedProducts.map((product) => (
-              <ProductCard
-                key={product.name}
-                product={product}
-              />
-            ))}
-          </Box>
-
-          {sortedProducts.length === 0 && (
+            {/* DYNAMIC CATEGORIES */}
             <Paper
               elevation={0}
               sx={{
-                p: 5,
-                textAlign: "center",
-                border: "1px solid #eee",
+                p: 1.5,
+                border: "1px solid #ebe5df",
+                backgroundColor: "#fff",
               }}
             >
               <Typography
                 sx={{
-                  color: "#650c18",
-                  fontFamily: "Georgia, serif",
-                  fontSize: "20px",
-                }}
-              >
-                No designs found
-              </Typography>
-            </Paper>
-          )}
-        </Box>
-      </Box>
-
-
-      <Box
-        sx={{
-          px: { xs: 2, md: 4 },
-          mt: 3,
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          flexWrap: "wrap",
-          gap: 1,
-        }}
-      >
-        <Typography
-          sx={{
-            fontSize: "8px",
-            color: "#777",
-          }}
-        >
-          Showing {sortedProducts.length} of 96 royal designs
-        </Typography>
-
-        <Box
-          sx={{
-            display: "flex",
-            gap: 0.5,
-          }}
-        >
-          {["‹", "1", "2", "3", "...", "12", "›"].map(
-            (item, index) => (
-              <Button
-                key={index}
-                sx={{
-                  minWidth: 28,
-                  height: 28,
-                  fontSize: "8px",
-                  color:
-                    item === "1"
-                      ? "#fff"
-                      : "#650c18",
-                  backgroundColor:
-                    item === "1"
-                      ? "#650c18"
-                      : "#fff",
-                  border: "1px solid #eee",
-                }}
-              >
-                {item}
-              </Button>
-            )
-          )}
-        </Box>
-      </Box>
-
-    
-
-      <Box
-        sx={{
-          px: { xs: 2, md: 4 },
-          mt: 3,
-        }}
-      >
-        <Paper
-          elevation={0}
-          sx={{
-            backgroundColor: "#f5f2ed",
-            p: 2,
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            gap: 2,
-            flexWrap: "wrap",
-          }}
-        >
-          <Box>
-            <Typography
-              sx={{
-                fontSize: "8px",
-                color: "#9a731f",
-                letterSpacing: 1,
-              }}
-            >
-              CAN'T DECIDE YOUR FIT?
-            </Typography>
-
-            <Typography
-              sx={{
-                fontFamily: "Georgia, serif",
-                fontSize: "19px",
-                color: "#6b101c",
-              }}
-            >
-              Speak to Our Jewellery Stylist
-            </Typography>
-
-            <Typography
-              sx={{
-                fontSize: "7px",
-                color: "#777",
-              }}
-            >
-              Send a photo of your outfit and get personalized
-              bangle recommendations.
-            </Typography>
-          </Box>
-
-          <Button
-            variant="contained"
-            startIcon={
-              <WhatsAppIcon sx={{ fontSize: 14 }} />
-            }
-            sx={{
-              backgroundColor: "#075d39",
-              fontSize: "8px",
-              fontWeight: 700,
-              textTransform: "none",
-              px: 2,
-              "&:hover": {
-                backgroundColor: "#064c30",
-              },
-            }}
-          >
-            STYLE ME ON WHATSAPP
-          </Button>
-        </Paper>
-      </Box>
-
-      
-
-      <Box
-        sx={{
-          px: { xs: 2, md: 4 },
-          mt: 5,
-          textAlign: "center",
-        }}
-      >
-        <Typography
-          sx={{
-            color: "#9a731f",
-            fontSize: "8px",
-            letterSpacing: 1.5,
-            fontWeight: 700,
-          }}
-        >
-          REAL BRIDES, REAL ROYAL WRISTWEAR
-        </Typography>
-
-        <Typography
-          sx={{
-            fontFamily: "Georgia, serif",
-            color: "#560914",
-            fontSize: {
-              xs: "25px",
-              md: "32px",
-            },
-            mt: 0.5,
-          }}
-        >
-          Verified Zinora Atelier Reviews
-        </Typography>
-
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            gap: 1,
-            mt: 1,
-          }}
-        >
-          <Typography
-            sx={{
-              color: "#d19a18",
-              fontSize: "14px",
-            }}
-          >
-            ★★★★★
-          </Typography>
-
-          <Typography
-            sx={{
-              fontSize: "9px",
-              color: "#555",
-            }}
-          >
-            <b>4.89 / 5.0</b> Average
-          </Typography>
-
-          <Typography
-            sx={{
-              fontSize: "8px",
-              color: "#777",
-            }}
-          >
-            (1,480+ Bangle Reviews)
-          </Typography>
-        </Box>
-
-        <Box
-          sx={{
-            display: "grid",
-            gridTemplateColumns: {
-              xs: "1fr",
-              md: "repeat(3, 1fr)",
-            },
-            gap: 1.5,
-            mt: 2,
-            textAlign: "left",
-          }}
-        >
-          <ReviewCard
-            name="Pooja S."
-            location="Udaipur"
-            size="2.6"
-            text="The Devanshi Rajwadi kada looks identical to my ancestral real gold heirloom. The screw lock is easy to open myself, and it stayed gleaming after hours of dancing!"
-          />
-
-          <ReviewCard
-            name="Ananya M."
-            location="Bengaluru"
-            size="2.4"
-            text="Usually imitation kadas give me green sweat marks. Zinora's micro-gold plating felt comfortable even during a summer event. Incredible craftsmanship."
-          />
-
-          <ReviewCard
-            name="Nandini K."
-            location="New Delhi"
-            size="2.8"
-            text="I have broad wrists and finding a 2.8 size is always difficult. The Jodha uncut polki kada fit perfectly. The velvet packaging was magnificent!"
-          />
-        </Box>
-      </Box>
-
-     
-
-      <Box
-        sx={{
-          mt: 5,
-          backgroundColor: "#680b18",
-          color: "#fff",
-          px: { xs: 2, md: 5 },
-          py: 2,
-          display: "grid",
-          gridTemplateColumns: {
-            xs: "1fr",
-            md: "repeat(3, 1fr)",
-          },
-          gap: 2,
-        }}
-      >
-        {[
-          [
-            "♢",
-            "100% Skin Safe Brass",
-            "Zero nickel, lead & hypoallergenic",
-          ],
-          [
-            "✧",
-            "1-Year Polish Warranty",
-            "Complimentary replating included",
-          ],
-          [
-            "♕",
-            "Handcrafted by Karigars",
-            "Empowering 400+ Rajasthani artisans",
-          ],
-        ].map(([icon, title, subtitle]) => (
-          <Box
-            key={title}
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              gap: 1,
-            }}
-          >
-            <Box
-              sx={{
-                width: 35,
-                height: 35,
-                backgroundColor: "#8b2634",
-                borderRadius: 1,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: "16px",
-              }}
-            >
-              {icon}
-            </Box>
-
-            <Box>
-              <Typography
-                sx={{
-                  fontSize: "10px",
+                  fontSize: 12,
                   fontWeight: 700,
+                  color: "#5b101c",
+                  mb: 1,
                 }}
               >
-                {title}
+                CATEGORIES
               </Typography>
 
-              <Typography
+              <Divider sx={{ mb: 1 }} />
+
+              <Box
                 sx={{
-                  fontSize: "7px",
-                  opacity: 0.8,
-                  mt: 0.3,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 0.5,
                 }}
               >
-                {subtitle}
-              </Typography>
-            </Box>
-          </Box>
-        ))}
-      </Box>
+                {categories.map((category) => (
+                  <Button
+                    key={category}
+                    onClick={() => setActiveCategory(category)}
+                    sx={{
+                      justifyContent: "flex-start",
+                      textAlign: "left",
+                      textTransform: "none",
+                      fontSize: 11,
+                      lineHeight: 1.5,
+                      px: 1,
+                      py: 1,
+                      borderRadius: "3px",
+                      color:
+                        activeCategory === category
+                          ? "#650c18"
+                          : "#6a3333",
+                      backgroundColor:
+                        activeCategory === category
+                          ? "#f6eceb"
+                          : "#fff",
+                      borderLeft:
+                        activeCategory === category
+                          ? "3px solid #650c18"
+                          : "3px solid transparent",
+                      "&:hover": {
+                        backgroundColor: "#f6eceb",
+                      },
+                    }}
+                  >
+                    {category}
+                  </Button>
+                ))}
+              </Box>
+            </Paper>
 
-
-      
-
-      <Box
-        sx={{
-          backgroundColor: "#f6f3ef",
-          px: { xs: 2, md: 5 },
-          py: 3,
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: 2,
-          flexWrap: "wrap",
-        }}
-      >
-        <Box>
-          <Typography
-            sx={{
-              color: "#9a731f",
-              fontSize: "8px",
-              letterSpacing: 1,
-            }}
-          >
-            EXCLUSIVE ROYAL PRIVILEGES
-          </Typography>
-
-          <Typography
-            sx={{
-              color: "#6b101c",
-              fontFamily: "Georgia, serif",
-              fontSize: "21px",
-            }}
-          >
-            Join the Zinora Atelier
-          </Typography>
-
-          <Typography
-            sx={{
-              fontSize: "7px",
-              color: "#777",
-              maxWidth: 450,
-              mt: 0.5,
-            }}
-          >
-            Sign up to receive private festive collection
-            previews and enjoy an exclusive 15% off your
-            maiden order.
-          </Typography>
-        </Box>
-
-        <Button
-          variant="contained"
-          sx={{
-            backgroundColor: "#074d19",
-            fontSize: "12px",
-            textTransform: "uppercase",
-            "&:hover": {
-              backgroundColor: "#074d19",
-            },
-          }}
-        >
-          CLAIM 15% OFF →
-        </Button>
-      </Box>
-
-      
-      <Box
-        component="footer"
-        sx={{
-          backgroundColor: "#2e1014",
-          color: "#fff",
-          px: { xs: 2, md: 5 },
-          pt: 4,
-        }}
-      >
-        <Box
-          sx={{
-            display: "grid",
-            gridTemplateColumns: {
-              xs: "1fr",
-              sm: "repeat(2, 1fr)",
-              lg: "1.5fr 1fr 1fr 1fr",
-            },
-            gap: 3,
-            pb: 3,
-          }}
-        >
-          {/* BRAND */}
-
-          <Box>
-            <Box
+            {/* FILTERS */}
+            <Paper
+              elevation={0}
               sx={{
-                display: "flex",
-                alignItems: "center",
-                gap: 1,
+                p: 1.5,
+                border: "1px solid #ebe5df",
+                backgroundColor: "#fff",
               }}
             >
               <Box
                 sx={{
-                  width: 38,
-                  height: 38,
-                  border: "1px solid #c8a451",
-                  color: "#fff",
                   display: "flex",
+                  justifyContent: "space-between",
                   alignItems: "center",
-                  justifyContent: "center",
-                  fontFamily: "Georgia, serif",
-                  fontSize: "23px",
+                  gap: 0.5,
                 }}
               >
-                Z
-              </Box>
-
-              <Box>
                 <Typography
                   sx={{
-                    fontFamily: "Georgia, serif",
-                    fontSize: "17px",
+                    fontSize: 12,
                     fontWeight: 700,
-                    letterSpacing: 2,
+                    color: "#5b101c",
+                    display: "flex",
+                    alignItems: "center",
                   }}
                 >
-                  ZINORA
+                  <FilterListIcon sx={{ fontSize: 16, mr: 0.5 }} />
+                  Filters
                 </Typography>
 
+                <Button
+                  onClick={resetFilters}
+                  size="small"
+                  sx={{
+                    fontSize: 9,
+                    color: "#9a731f",
+                    minWidth: 0,
+                  }}
+                >
+                  RESET ALL
+                </Button>
+              </Box>
+
+              <Divider sx={{ my: 1.5 }} />
+
+              {/* SIZE FILTER */}
+              <Typography
+                sx={{ fontSize: 11, fontWeight: 700, mb: 0.5 }}
+              >
+                Bangle Size
+              </Typography>
+
+              <FormGroup>
+                {sizeOptions.map((item) => (
+                  <FormControlLabel
+                    key={item}
+                    control={
+                      <Checkbox
+                        size="small"
+                        checked={selectedSizes.includes(item)}
+                        onChange={() => handleSizeChange(item)}
+                        sx={{
+                          p: 0.3,
+                          "& .MuiSvgIcon-root": { fontSize: 16 },
+                        }}
+                      />
+                    }
+                    label={
+                      <Typography sx={{ fontSize: 10 }}>
+                        {item}
+                      </Typography>
+                    }
+                    sx={{ m: 0, minHeight: 25 }}
+                  />
+                ))}
+              </FormGroup>
+
+              <Divider sx={{ my: 1.5 }} />
+
+              {/* PRICE FILTER */}
+              <Typography
+                sx={{ fontSize: 11, fontWeight: 700, mb: 0.5 }}
+              >
+                Price Range
+              </Typography>
+
+              <FormGroup>
+                {priceOptions.map((item) => (
+                  <FormControlLabel
+                    key={item}
+                    control={
+                      <Checkbox
+                        size="small"
+                        checked={selectedPrices.includes(item)}
+                        onChange={() => handlePriceChange(item)}
+                        sx={{
+                          p: 0.3,
+                          "& .MuiSvgIcon-root": { fontSize: 16 },
+                        }}
+                      />
+                    }
+                    label={
+                      <Typography sx={{ fontSize: 10 }}>
+                        {item}
+                      </Typography>
+                    }
+                    sx={{ m: 0, minHeight: 25 }}
+                  />
+                ))}
+              </FormGroup>
+            </Paper>
+          </Box>
+
+          {/* PRODUCT GRID */}
+          <Box sx={{ minWidth: 0 }}>
+            {loading ? (
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 5,
+                  textAlign: "center",
+                  border: "1px solid #ebe5df",
+                  backgroundColor: "#fff",
+                }}
+              >
+                <CircularProgress sx={{ color: "#650c18" }} />
+
+                <Typography sx={{ mt: 2, fontSize: 12 }}>
+                  Loading products from backend...
+                </Typography>
+              </Paper>
+            ) : error ? (
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 4,
+                  textAlign: "center",
+                  border: "1px solid #ebe5df",
+                  backgroundColor: "#fff",
+                }}
+              >
                 <Typography
                   sx={{
-                    color: "#c8a451",
-                    fontSize: "7px",
-                    letterSpacing: 3,
+                    color: "#650c18",
+                    fontFamily: "Georgia, serif",
+                    fontSize: 20,
                   }}
                 >
-                  ATELIER
+                  Unable to load products
                 </Typography>
+
+                <Typography sx={{ fontSize: 12, mt: 1 }}>
+                  {error}
+                </Typography>
+
+                <Button
+                  onClick={() => setReload((value) => value + 1)}
+                  variant="contained"
+                  sx={{
+                    mt: 2,
+                    backgroundColor: "#650c18",
+                    "&:hover": { backgroundColor: "#450710" },
+                  }}
+                >
+                  Try Again
+                </Button>
+              </Paper>
+            ) : sortedProducts.length > 0 ? (
+              <Box
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: {
+                    xs: "repeat(2, minmax(0, 1fr))",
+                    sm: "repeat(2, minmax(0, 1fr))",
+                    lg: "repeat(3, minmax(0, 1fr))",
+                  },
+                  gap: 1.5,
+                  alignContent: "start",
+                }}
+              >
+                {sortedProducts.map((product) => (
+                  <ProductCard
+                    key={product.id}
+                    product={product}
+                    bag={bag}
+                    onBagToggle={handleBagToggle}
+                  />
+                ))}
               </Box>
-            </Box>
-
-            <Typography
-              sx={{
-                color: "#d4c2c4",
-                fontSize: "8px",
-                lineHeight: 1.7,
-                mt: 1.5,
-                maxWidth: 320,
-              }}
-            >
-              Contemporary Indian heritage meets uncompromising
-              craftsmanship. Zinora crafts bespoke heirloom-grade
-              imitation jewellery with micro-gold plating and
-              hand-set accent stones.
-            </Typography>
-
-            {/* CALL SMS WHATSAPP */}
-
-            <Box
-              sx={{
-                display: "flex",
-                gap: 1,
-                mt: 2,
-              }}
-            >
-              <IconButton
+            ) : (
+              <Paper
+                elevation={0}
                 sx={{
-                  color: "#fff",
-                  backgroundColor: "#6b2630",
-                  width: 20,
-                  height: 20,
+                  p: 4,
+                  textAlign: "center",
+                  border: "1px solid #ebe5df",
+                  backgroundColor: "#fff",
                 }}
               >
-                <CallIcon sx={{ fontSize: 10 }} />
-              </IconButton>
+                <Typography
+                  sx={{
+                    color: "#650c18",
+                    fontFamily: "Georgia, serif",
+                    fontSize: 20,
+                  }}
+                >
+                  No designs found
+                </Typography>
 
-              <IconButton
-                sx={{
-                  color: "#fff",
-                  backgroundColor: "#6b2630",
-                  width: 20,
-                  height: 20,
-                }}
-              >
-                <SmsIcon sx={{ fontSize: 10 }} />
-              </IconButton>
+                <Typography sx={{ fontSize: 12, mt: 1 }}>
+                  Try changing your category, size, or price filters.
+                  If your database has no matching products, add them
+                  from the admin dashboard.
+                </Typography>
 
-              <IconButton
-                sx={{
-                  color: "#fff",
-                  backgroundColor: "#08783d",
-                  width: 20,
-                  height: 20,
-                }}
-              >
-                <WhatsAppIcon sx={{ fontSize: 10 }} />
-              </IconButton>
-            </Box>
-          </Box>
-
-          {/* SHOP COLLECTIONS */}
-
-          <Box>
-            <Typography
-              sx={{
-                color: "#fff",
-                fontSize: "9px",
-                fontWeight: 700,
-                mb: 1.5,
-              }}
-            >
-              Shop Collections
-            </Typography>
-
-            {[
-              "Kundan & Polki Chokers",
-              "Temple & Chandbali Jhumkas",
-              "Antique Gold Bangles & Kadas",
-              "Royal Bridal Trousseau",
-              "Modern CZ Everyday Luxe",
-            ].map((item) => (
-              <Typography
-                key={item}
-                sx={{
-                  color: "#d4c2c4",
-                  fontSize: "8px",
-                  mb: 0.9,
-                  cursor: "pointer",
-                }}
-              >
-                {item}
-              </Typography>
-            ))}
-          </Box>
-
-          {/* CUSTOMER CARE */}
-
-          <Box>
-            <Typography
-              sx={{
-                color: "#fff",
-                fontSize: "10px",
-                fontWeight: 700,
-                mb: 1,
-              }}
-            >
-              Customer Care
-            </Typography>
-
-            {[
-              "Track Consignment",
-              "1-Year Polish Claim",
-              "Bangle & Ring Sizing Guide",
-              "Jewellery Care Regimen",
-              "WhatsApp Direct Support",
-            ].map((item) => (
-              <Typography
-                key={item}
-                sx={{
-                  color: "#d4c2c4",
-                  fontSize: "8px",
-                  mb: 0.9,
-                  cursor: "pointer",
-                }}
-              >
-                {item}
-              </Typography>
-            ))}
-          </Box>
-
-          {/* POLICIES */}
-
-          <Box>
-            <Typography
-              sx={{
-                color: "#fff",
-                fontSize: "10px",
-                fontWeight: 700,
-                mb: 0.9,
-              }}
-            >
-              Policies & Trust
-            </Typography>
-
-            {[
-              "Shipping & COD Terms",
-              "48-Hour Return & Exchange",
-              "Privacy & Secure Gateway",
-              "Terms of Service",
-              "Karigar Sustenance Initiative",
-            ].map((item) => (
-              <Typography
-                key={item}
-                sx={{
-                  color: "#d4c2c4",
-                  fontSize: "8px",
-                  mb: 0.9,
-                  cursor: "pointer",
-                }}
-              >
-                {item}
-              </Typography>
-            ))}
+                <Button
+                  onClick={resetFilters}
+                  sx={{ mt: 1, color: "#650c18" }}
+                >
+                  Clear Filters
+                </Button>
+              </Paper>
+            )}
           </Box>
         </Box>
 
-        <Divider
-          sx={{
-            borderColor: "#51262d",
-          }}
-        />
-
+        {/* BAG COUNT */}
         <Box
           sx={{
-            py: 1.5,
-            display: "flex",
-            justifyContent: "space-between",
-            gap: 2,
-            flexWrap: "wrap",
+            position: "fixed",
+            right: 16,
+            bottom: 16,
+            zIndex: 10,
           }}
         >
-          <Typography
-            sx={{
-              color: "#bdaeb0",
-              fontSize: "7px",
-            }}
-          >
-            © 2025 ZINORA Luxury Imitation Jewels. All Rights
-            Reserved.
-          </Typography>
-
-          <Typography
-            sx={{
-              color: "#bdaeb0",
-              fontSize: "10px",
-            }}
-          >
-            UPI　 RuPay　 Visa　 Mastercard　 Cash on
-            Delivery　 Razorpay Verified
-          </Typography>
+          {bag.length > 0 && (
+            <Paper
+              elevation={4}
+              sx={{
+                px: 2,
+                py: 1.2,
+                backgroundColor: "#650c18",
+                color: "#fff",
+                borderRadius: "4px",
+              }}
+            >
+              <Typography sx={{ fontSize: 12, fontWeight: 700 }}>
+                Bag: {bag.length} {bag.length === 1 ? "item" : "items"}
+              </Typography>
+            </Paper>
+          )}
         </Box>
       </Box>
     </Box>

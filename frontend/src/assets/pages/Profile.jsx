@@ -1,5 +1,4 @@
-
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Alert,
   Avatar,
@@ -17,6 +16,7 @@ import {
   useMediaQuery,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
+import { useNavigate } from "react-router-dom";
 
 import PersonIcon from "@mui/icons-material/Person";
 import ShoppingBagOutlinedIcon from "@mui/icons-material/ShoppingBagOutlined";
@@ -26,6 +26,11 @@ import LogoutOutlinedIcon from "@mui/icons-material/LogoutOutlined";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import VerifiedUserOutlinedIcon from "@mui/icons-material/VerifiedUserOutlined";
+import ShoppingCartOutlinedIcon from "@mui/icons-material/ShoppingCartOutlined";
+import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
+import SupportAgentOutlinedIcon from "@mui/icons-material/SupportAgentOutlined";
+import CloseOutlinedIcon from "@mui/icons-material/CloseOutlined";
+import SaveOutlinedIcon from "@mui/icons-material/SaveOutlined";
 
 const COLORS = {
   maroon: "#641526",
@@ -36,30 +41,30 @@ const COLORS = {
   text: "#292321",
   muted: "#817773",
   white: "#FFFFFF",
+  lightPink: "#F7EDE9",
+  gold: "#C9A66B",
 };
+
+const EMPTY_PROFILE = {
+  name: "",
+  email: "",
+  phone: "",
+  address: "",
+};
+
+const PROFILE_STORAGE_KEY = "zinoraCustomerProfile";
 
 const Profile = () => {
   const theme = useTheme();
+  const navigate = useNavigate();
+
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
   const [isEditing, setIsEditing] = useState(false);
   const [activeMenu, setActiveMenu] = useState("My Profile");
 
-  // Connect these fields to the logged-in user's API/session.
-  // No personal name or email is hardcoded.
-  const [profile, setProfile] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    address: "",
-  });
-
-  const [savedProfile, setSavedProfile] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    address: "",
-  });
+  const [profile, setProfile] = useState(EMPTY_PROFILE);
+  const [savedProfile, setSavedProfile] = useState(EMPTY_PROFILE);
 
   const [toast, setToast] = useState({
     open: false,
@@ -67,12 +72,55 @@ const Profile = () => {
     severity: "success",
   });
 
+  // Load the locally saved profile when the page opens.
+  // The real Django customer profile API can replace this later.
+  useEffect(() => {
+    try {
+      const storedProfile = localStorage.getItem(PROFILE_STORAGE_KEY);
+
+      const storedUsername =
+        localStorage.getItem("zinoraCustomerUsername") ||
+        sessionStorage.getItem("zinoraCustomerUsername") ||
+        "";
+
+      if (storedProfile) {
+        const parsedProfile = JSON.parse(storedProfile);
+
+        const loadedProfile = {
+          ...EMPTY_PROFILE,
+          ...parsedProfile,
+          name: parsedProfile.name || storedUsername,
+        };
+
+        setProfile(loadedProfile);
+        setSavedProfile(loadedProfile);
+      } else {
+        const initialProfile = {
+          ...EMPTY_PROFILE,
+          name: storedUsername,
+        };
+
+        setProfile(initialProfile);
+        setSavedProfile(initialProfile);
+      }
+    } catch (error) {
+      console.error("Unable to load customer profile:", error);
+    }
+  }, []);
+
   const showToast = (message, severity = "success") => {
     setToast({
       open: true,
       message,
       severity,
     });
+  };
+
+  const closeToast = () => {
+    setToast((previous) => ({
+      ...previous,
+      open: false,
+    }));
   };
 
   const handleChange = (event) => {
@@ -85,12 +133,57 @@ const Profile = () => {
   };
 
   const handleSave = () => {
-    setSavedProfile({ ...profile });
-    setIsEditing(false);
+    if (!profile.name.trim()) {
+      showToast("Please enter your full name.", "warning");
+      return;
+    }
 
-    showToast(
-      "Changes saved for this session. Connect your profile API to save permanently."
-    );
+    if (
+      profile.email.trim() &&
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profile.email.trim())
+    ) {
+      showToast("Please enter a valid email address.", "warning");
+      return;
+    }
+
+    if (
+      profile.phone.trim() &&
+      !/^[0-9+\-\s()]{7,20}$/.test(profile.phone.trim())
+    ) {
+      showToast("Please enter a valid phone number.", "warning");
+      return;
+    }
+
+    try {
+      const updatedProfile = {
+        name: profile.name.trim(),
+        email: profile.email.trim(),
+        phone: profile.phone.trim(),
+        address: profile.address.trim(),
+      };
+
+      localStorage.setItem(
+        PROFILE_STORAGE_KEY,
+        JSON.stringify(updatedProfile)
+      );
+
+      setProfile(updatedProfile);
+      setSavedProfile(updatedProfile);
+      setIsEditing(false);
+
+      // Keep the existing username available to the current UI.
+      if (updatedProfile.name) {
+        localStorage.setItem(
+          "zinoraCustomerUsername",
+          updatedProfile.name
+        );
+      }
+
+      showToast("Your profile has been saved on this browser.");
+    } catch (error) {
+      console.error("Unable to save customer profile:", error);
+      showToast("Unable to save profile details.", "error");
+    }
   };
 
   const handleCancel = () => {
@@ -98,20 +191,41 @@ const Profile = () => {
     setIsEditing(false);
   };
 
-  const handleMenuClick = (menu) => {
-    setActiveMenu(menu);
+  const handleLogout = () => {
+    [
+      "zinoraCustomerToken",
+      "zinoraCustomerRole",
+      "zinoraCustomerUsername",
+    ].forEach((key) => {
+      localStorage.removeItem(key);
+      sessionStorage.removeItem(key);
+    });
 
-    if (menu === "Logout") {
-      showToast("Connect your existing logout function here.", "info");
+    // Keep the saved profile on this browser.
+    // Remove PROFILE_STORAGE_KEY here too if you want to clear it on logout.
+
+    navigate("/customer/login", { replace: true });
+  };
+
+  const handleMenuClick = (menu) => {
+    setActiveMenu(menu.label);
+
+    if (menu.label === "Logout") {
+      handleLogout();
       return;
     }
 
-    if (menu !== "My Profile") {
-      showToast(
-        `${menu} needs to be connected to the relevant page.`,
-        "info"
-      );
+    if (menu.label === "My Profile") {
+      setActiveMenu("My Profile");
+      return;
     }
+
+    if (menu.path) {
+      navigate(menu.path);
+      return;
+    }
+
+    showToast(`${menu.label} will be available soon.`, "info");
   };
 
   const menuItems = [
@@ -122,14 +236,20 @@ const Profile = () => {
     {
       label: "My Orders",
       icon: <ShoppingBagOutlinedIcon />,
+      path: "/my-orders",
     },
     {
       label: "My Wishlist",
       icon: <FavoriteBorderOutlinedIcon />,
+      path: "/wishlist",
     },
     {
       label: "My Addresses",
       icon: <LocationOnOutlinedIcon />,
+    },
+    {
+      label: "Login & Security",
+      icon: <LockOutlinedIcon />,
     },
     {
       label: "Logout",
@@ -168,6 +288,15 @@ const Profile = () => {
         disabled={!isEditing}
         size="medium"
         variant="outlined"
+        autoComplete={
+          name === "email"
+            ? "email"
+            : name === "phone"
+              ? "tel"
+              : name === "name"
+                ? "name"
+                : "street-address"
+        }
         sx={{
           "& .MuiOutlinedInput-root": {
             borderRadius: "10px",
@@ -189,6 +318,36 @@ const Profile = () => {
     </Box>
   );
 
+  const accountCards = [
+    {
+      title: "My Orders",
+      description: "View your purchases and track your deliveries.",
+      icon: <ShoppingBagOutlinedIcon sx={{ fontSize: 26 }} />,
+      path: "/my-orders",
+    },
+    {
+      title: "My Wishlist",
+      description: "Find your saved jewellery and favourite designs.",
+      icon: <FavoriteBorderOutlinedIcon sx={{ fontSize: 26 }} />,
+      path: "/wishlist",
+    },
+    {
+      title: "Shopping Cart",
+      description: "Review your selected jewellery before checkout.",
+      icon: <ShoppingCartOutlinedIcon sx={{ fontSize: 26 }} />,
+      path: "/cart",
+    },
+    {
+      title: "My Addresses",
+      description: "Manage the addresses you use for delivery.",
+      icon: <LocationOnOutlinedIcon sx={{ fontSize: 26 }} />,
+      action: () => {
+        setActiveMenu("My Addresses");
+        showToast("Address management will be connected next.", "info");
+      },
+    },
+  ];
+
   return (
     <Box
       sx={{
@@ -199,7 +358,6 @@ const Profile = () => {
         boxSizing: "border-box",
       }}
     >
-      {/* CENTERED PAGE CONTAINER */}
       <Container
         maxWidth={false}
         sx={{
@@ -243,11 +401,11 @@ const Profile = () => {
               mt: 1,
             }}
           >
-            Manage your personal details and account preferences.
+            Manage your profile, orders, wishlist and account preferences.
           </Typography>
         </Box>
 
-        {/* MAIN TWO-COLUMN STRUCTURE */}
+        {/* MAIN TWO-COLUMN LAYOUT */}
         <Box
           sx={{
             display: "grid",
@@ -271,7 +429,7 @@ const Profile = () => {
               boxSizing: "border-box",
             }}
           >
-            {/* PROFILE CARD HEADER */}
+            {/* CUSTOMER HEADER */}
             <Box
               sx={{
                 background: `linear-gradient(135deg, ${COLORS.darkMaroon}, ${COLORS.maroon})`,
@@ -301,7 +459,7 @@ const Profile = () => {
                   overflowWrap: "anywhere",
                 }}
               >
-                {profile.name || "My Profile"}
+                {profile.name || "Welcome to Zinora"}
               </Typography>
 
               <Typography
@@ -312,7 +470,7 @@ const Profile = () => {
                   overflowWrap: "anywhere",
                 }}
               >
-                {profile.email || "Account details"}
+                {profile.email || "Manage your customer account"}
               </Typography>
 
               <Chip
@@ -324,7 +482,7 @@ const Profile = () => {
                     }}
                   />
                 }
-                label="Zinora Member"
+                label="Customer Account"
                 size="small"
                 sx={{
                   mt: 1.5,
@@ -336,7 +494,7 @@ const Profile = () => {
               />
             </Box>
 
-            {/* NAVIGATION */}
+            {/* SIDEBAR NAVIGATION */}
             <Box
               sx={{
                 p: { xs: 1.5, md: 2 },
@@ -352,7 +510,7 @@ const Profile = () => {
                 return (
                   <Button
                     key={item.label}
-                    onClick={() => handleMenuClick(item.label)}
+                    onClick={() => handleMenuClick(item)}
                     startIcon={item.icon}
                     endIcon={
                       !isMobile && item.label !== "Logout" ? (
@@ -367,19 +525,23 @@ const Profile = () => {
                       width: isMobile ? "auto" : "100%",
                       justifyContent: "flex-start",
                       textTransform: "none",
+                      whiteSpace: "nowrap",
                       fontSize: "13px",
                       fontWeight: selected ? 700 : 500,
                       px: 1.5,
                       py: 1.35,
                       borderRadius: "10px",
-                      color: selected
-                        ? COLORS.maroon
-                        : item.label === "Logout"
+                      color:
+                        item.label === "Logout"
                           ? "#B34444"
-                          : COLORS.muted,
-                      backgroundColor: selected ? "#F7EDE9" : "transparent",
+                          : selected
+                            ? COLORS.maroon
+                            : COLORS.muted,
+                      backgroundColor: selected
+                        ? COLORS.lightPink
+                        : "transparent",
                       "&:hover": {
-                        backgroundColor: "#F7EDE9",
+                        backgroundColor: COLORS.lightPink,
                         color: COLORS.maroon,
                       },
                       "& .MuiButton-startIcon": {
@@ -429,7 +591,7 @@ const Profile = () => {
             )}
           </Paper>
 
-          {/* RIGHT CONTENT COLUMN */}
+          {/* RIGHT CONTENT */}
           <Box
             sx={{
               width: "100%",
@@ -476,7 +638,7 @@ const Profile = () => {
                       mt: 0.75,
                     }}
                   >
-                    Update your personal details below.
+                    Update and manage your personal details.
                   </Typography>
                 </Box>
 
@@ -506,6 +668,7 @@ const Profile = () => {
                 ) : (
                   <Stack direction="row" spacing={1}>
                     <Button
+                      startIcon={<CloseOutlinedIcon />}
                       onClick={handleCancel}
                       sx={{
                         textTransform: "none",
@@ -517,6 +680,7 @@ const Profile = () => {
 
                     <Button
                       variant="contained"
+                      startIcon={<SaveOutlinedIcon />}
                       onClick={handleSave}
                       sx={{
                         textTransform: "none",
@@ -528,7 +692,7 @@ const Profile = () => {
                         },
                       }}
                     >
-                      Save Changes
+                      Save
                     </Button>
                   </Stack>
                 )}
@@ -536,7 +700,6 @@ const Profile = () => {
 
               <Divider sx={{ borderColor: COLORS.border, mb: 3 }} />
 
-              {/* FORM FIELDS */}
               <Grid container spacing={2.5}>
                 <Grid item xs={12} sm={6}>
                   {renderField(
@@ -570,7 +733,7 @@ const Profile = () => {
                     "Address",
                     "address",
                     profile.address,
-                    "Enter your address"
+                    "Enter your delivery address"
                   )}
                 </Grid>
               </Grid>
@@ -584,161 +747,259 @@ const Profile = () => {
                     lineHeight: 1.6,
                   }}
                 >
-                  Your profile information will appear here after it is
-                  connected to your login account.
+                  Your details are currently stored in this browser. Connect
+                  your customer profile API to sync them with your account
+                  across devices.
                 </Typography>
               )}
             </Paper>
 
-            {/* TWO EQUAL BOXES BELOW PERSONAL INFORMATION */}
-            <Grid
-              container
-              spacing={2.5}
-              sx={{
-                width: "100%",
-                m: 0,
-                "& > .MuiGrid-item": {
-                  display: "flex",
-                },
-              }}
-            >
-              {/* MY ORDERS */}
+            {/* ACCOUNT SHORTCUTS */}
+            <Box>
+              <Box sx={{ mb: 2 }}>
+                <Typography
+                  sx={{
+                    color: COLORS.text,
+                    fontWeight: 700,
+                    fontSize: { xs: "19px", md: "22px" },
+                  }}
+                >
+                  Your Account
+                </Typography>
+
+                <Typography
+                  sx={{
+                    mt: 0.5,
+                    fontSize: "13px",
+                    color: COLORS.muted,
+                  }}
+                >
+                  Quick access to your shopping activities.
+                </Typography>
+              </Box>
+
+              <Grid container spacing={2}>
+                {accountCards.map((card) => (
+                  <Grid item xs={12} sm={6} key={card.title}>
+                    <Paper
+                      elevation={0}
+                      onClick={() => {
+                        if (card.path) {
+                          navigate(card.path);
+                        } else if (card.action) {
+                          card.action();
+                        }
+                      }}
+                      sx={{
+                        ...panelStyle,
+                        p: { xs: 2.5, md: 3.5 },
+                        minHeight: { xs: 160, md: 190 },
+                        width: "100%",
+                        boxSizing: "border-box",
+                        display: "flex",
+                        flexDirection: "column",
+                        justifyContent: "space-between",
+                        cursor: "pointer",
+                        transition: "all 0.2s ease",
+                        "&:hover": {
+                          borderColor: "#D4B7AF",
+                          boxShadow: "0 8px 28px rgba(69,16,29,0.08)",
+                          transform: "translateY(-2px)",
+                        },
+                      }}
+                    >
+                      <Stack
+                        direction="row"
+                        justifyContent="space-between"
+                        alignItems="center"
+                      >
+                        <Box
+                          sx={{
+                            width: 50,
+                            height: 50,
+                            borderRadius: "13px",
+                            backgroundColor: COLORS.lightPink,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            color: COLORS.maroon,
+                          }}
+                        >
+                          {card.icon}
+                        </Box>
+
+                        <ArrowForwardIosIcon
+                          sx={{
+                            fontSize: 14,
+                            color: COLORS.muted,
+                          }}
+                        />
+                      </Stack>
+
+                      <Box sx={{ mt: 3 }}>
+                        <Typography
+                          sx={{
+                            fontSize: "18px",
+                            fontWeight: 700,
+                            color: COLORS.text,
+                          }}
+                        >
+                          {card.title}
+                        </Typography>
+
+                        <Typography
+                          sx={{
+                            mt: 0.75,
+                            fontSize: "13px",
+                            lineHeight: 1.7,
+                            color: COLORS.muted,
+                          }}
+                        >
+                          {card.description}
+                        </Typography>
+                      </Box>
+                    </Paper>
+                  </Grid>
+                ))}
+              </Grid>
+            </Box>
+
+            {/* SECURITY AND SUPPORT */}
+            <Grid container spacing={2}>
               <Grid item xs={12} sm={6}>
                 <Paper
                   elevation={0}
                   sx={{
                     ...panelStyle,
-                    p: { xs: 2.5, md: 3.5 },
-                    minHeight: { xs: 160, md: 190 },
-                    width: "100%",
+                    p: 2.5,
+                    height: "100%",
                     boxSizing: "border-box",
-                    display: "flex",
-                    flexDirection: "column",
-                    justifyContent: "space-between",
-                    transition: "all 0.2s ease",
-                    "&:hover": {
-                      borderColor: "#D4B7AF",
-                      boxShadow: "0 8px 28px rgba(69,16,29,0.08)",
-                    },
                   }}
                 >
-                  <Stack
-                    direction="row"
-                    justifyContent="space-between"
-                    alignItems="center"
-                  >
+                  <Stack direction="row" spacing={1.5} alignItems="center">
                     <Box
                       sx={{
-                        width: 50,
-                        height: 50,
-                        borderRadius: "13px",
-                        backgroundColor: "#F7EDE9",
+                        width: 44,
+                        height: 44,
+                        flexShrink: 0,
+                        borderRadius: "12px",
+                        backgroundColor: COLORS.lightPink,
+                        color: COLORS.maroon,
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        color: COLORS.maroon,
                       }}
                     >
-                      <ShoppingBagOutlinedIcon sx={{ fontSize: 26 }} />
+                      <LockOutlinedIcon />
                     </Box>
 
-                    <ArrowForwardIosIcon
-                      sx={{ fontSize: 14, color: COLORS.muted }}
-                    />
+                    <Box>
+                      <Typography
+                        sx={{
+                          fontWeight: 700,
+                          color: COLORS.text,
+                          fontSize: "15px",
+                        }}
+                      >
+                        Login & Security
+                      </Typography>
+
+                      <Typography
+                        sx={{
+                          mt: 0.5,
+                          fontSize: "12px",
+                          color: COLORS.muted,
+                          lineHeight: 1.6,
+                        }}
+                      >
+                        Password and account protection.
+                      </Typography>
+                    </Box>
                   </Stack>
 
-                  <Box sx={{ mt: 3 }}>
-                    <Typography
-                      sx={{
-                        fontSize: "19px",
-                        fontWeight: 700,
-                        color: COLORS.text,
-                      }}
-                    >
-                      My Orders
-                    </Typography>
-
-                    <Typography
-                      sx={{
-                        mt: 0.75,
-                        fontSize: "13px",
-                        lineHeight: 1.7,
-                        color: COLORS.muted,
-                      }}
-                    >
-                      View your purchases and track your deliveries.
-                    </Typography>
-                  </Box>
+                  <Button
+                    onClick={() =>
+                      showToast(
+                        "Password management needs to be connected to your authentication API.",
+                        "info"
+                      )
+                    }
+                    endIcon={<ArrowForwardIosIcon sx={{ fontSize: 12 }} />}
+                    sx={{
+                      mt: 2,
+                      textTransform: "none",
+                      color: COLORS.maroon,
+                      fontWeight: 700,
+                    }}
+                  >
+                    Manage Security
+                  </Button>
                 </Paper>
               </Grid>
 
-              {/* MY WISHLIST */}
               <Grid item xs={12} sm={6}>
                 <Paper
                   elevation={0}
                   sx={{
                     ...panelStyle,
-                    p: { xs: 2.5, md: 3.5 },
-                    minHeight: { xs: 160, md: 190 },
-                    width: "100%",
+                    p: 2.5,
+                    height: "100%",
                     boxSizing: "border-box",
-                    display: "flex",
-                    flexDirection: "column",
-                    justifyContent: "space-between",
-                    transition: "all 0.2s ease",
-                    "&:hover": {
-                      borderColor: "#D4B7AF",
-                      boxShadow: "0 8px 28px rgba(69,16,29,0.08)",
-                    },
                   }}
                 >
-                  <Stack
-                    direction="row"
-                    justifyContent="space-between"
-                    alignItems="center"
-                  >
+                  <Stack direction="row" spacing={1.5} alignItems="center">
                     <Box
                       sx={{
-                        width: 50,
-                        height: 50,
-                        borderRadius: "13px",
-                        backgroundColor: "#F7EDE9",
+                        width: 44,
+                        height: 44,
+                        flexShrink: 0,
+                        borderRadius: "12px",
+                        backgroundColor: COLORS.lightPink,
+                        color: COLORS.maroon,
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        color: COLORS.maroon,
                       }}
                     >
-                      <FavoriteBorderOutlinedIcon sx={{ fontSize: 26 }} />
+                      <SupportAgentOutlinedIcon />
                     </Box>
 
-                    <ArrowForwardIosIcon
-                      sx={{ fontSize: 14, color: COLORS.muted }}
-                    />
+                    <Box>
+                      <Typography
+                        sx={{
+                          fontWeight: 700,
+                          color: COLORS.text,
+                          fontSize: "15px",
+                        }}
+                      >
+                        Help & Support
+                      </Typography>
+
+                      <Typography
+                        sx={{
+                          mt: 0.5,
+                          fontSize: "12px",
+                          color: COLORS.muted,
+                          lineHeight: 1.6,
+                        }}
+                      >
+                        Need help with an order or your account?
+                      </Typography>
+                    </Box>
                   </Stack>
 
-                  <Box sx={{ mt: 3 }}>
-                    <Typography
-                      sx={{
-                        fontSize: "19px",
-                        fontWeight: 700,
-                        color: COLORS.text,
-                      }}
-                    >
-                      My Wishlist
-                    </Typography>
-
-                    <Typography
-                      sx={{
-                        mt: 0.75,
-                        fontSize: "13px",
-                        lineHeight: 1.7,
-                        color: COLORS.muted,
-                      }}
-                    >
-                      Find your saved jewellery and favourite designs.
-                    </Typography>
-                  </Box>
+                  <Button
+                    onClick={() => navigate("/contact")}
+                    endIcon={<ArrowForwardIosIcon sx={{ fontSize: 12 }} />}
+                    sx={{
+                      mt: 2,
+                      textTransform: "none",
+                      color: COLORS.maroon,
+                      fontWeight: 700,
+                    }}
+                  >
+                    Contact Us
+                  </Button>
                 </Paper>
               </Grid>
             </Grid>
@@ -748,12 +1009,16 @@ const Profile = () => {
               sx={{
                 px: 0.5,
                 display: "flex",
-                alignItems: "center",
+                alignItems: "flex-start",
                 gap: 1,
               }}
             >
               <VerifiedUserOutlinedIcon
-                sx={{ fontSize: 17, color: COLORS.maroon }}
+                sx={{
+                  mt: 0.2,
+                  fontSize: 17,
+                  color: COLORS.maroon,
+                }}
               />
 
               <Typography
@@ -763,24 +1028,19 @@ const Profile = () => {
                   lineHeight: 1.7,
                 }}
               >
-                Keep your account details updated for a smoother shopping
-                experience.
+                Keep your account details updated for a smoother Zinora
+                shopping experience.
               </Typography>
             </Box>
           </Box>
         </Box>
       </Container>
 
-      {/* NOTIFICATION */}
+      {/* NOTIFICATIONS */}
       <Snackbar
         open={toast.open}
         autoHideDuration={3500}
-        onClose={() =>
-          setToast((previous) => ({
-            ...previous,
-            open: false,
-          }))
-        }
+        onClose={closeToast}
         anchorOrigin={{
           vertical: "bottom",
           horizontal: "center",
@@ -789,12 +1049,7 @@ const Profile = () => {
         <Alert
           severity={toast.severity}
           variant="filled"
-          onClose={() =>
-            setToast((previous) => ({
-              ...previous,
-              open: false,
-            }))
-          }
+          onClose={closeToast}
           sx={{ width: "100%" }}
         >
           {toast.message}

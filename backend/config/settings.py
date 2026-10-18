@@ -40,6 +40,10 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework.authtoken',
     'accounts',
+     "products",
+     "orders",
+     "payments",
+     "offers",
 ]
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -147,3 +151,5 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticated',
     ],
 }
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"

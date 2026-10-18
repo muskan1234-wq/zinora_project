@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+
 import {
   Box,
   Typography,
@@ -13,191 +14,294 @@ import {
   Divider,
   Chip,
   IconButton,
+  CircularProgress,
 } from "@mui/material";
 
 import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
+import FavoriteIcon from "@mui/icons-material/Favorite";
 import FilterListIcon from "@mui/icons-material/FilterList";
 import StarIcon from "@mui/icons-material/Star";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 
+// ======================================================
+// DJANGO API CONFIGURATION
+// ======================================================
+
+const API_BASE = (
+  import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000"
+).replace(/\/+$/, "");
+
+const PRODUCTS_API = `${API_BASE}/api/products/`;
+const CATEGORIES_API = `${API_BASE}/api/products/categories/`;
 
 // ======================================================
-// PRODUCT DATA
+// HELPER FUNCTIONS
 // ======================================================
 
-const products = [
-  {
-    id: 1,
-    name: "Meenakari Royal Jhumka",
-    price: 599,
-    oldPrice: 1299,
-    rating: 4.9,
-    reviews: 128,
-    badge: "BESTSELLER",
-    category: "Jhumkas",
-    style: "Traditional Jhumkas",
-    stone: "Meenakari",
-    priceRange: "₹500 - ₹1,499",
-    metal: "Hypoallergenic Brass",
-    weight: "Lightweight < 40 grams",
-    offer: "54% OFF",
-    image:
-      "https://images.unsplash.com/photo-1611652022419-a9419f74343d?auto=format&fit=crop&w=700&q=80",
-  },
+const getArray = (data) => {
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.results)) return data.results;
+  if (Array.isArray(data?.products)) return data.products;
+  if (Array.isArray(data?.categories)) return data.categories;
+  if (Array.isArray(data?.data)) return data.data;
+  return [];
+};
 
-  {
-    id: 2,
-    name: "Kundan Chandbali Earrings",
-    price: 799,
-    oldPrice: 1599,
-    rating: 4.8,
-    reviews: 96,
-    badge: "TRENDING",
-    category: "Chandbalis",
-    style: "Chandbali",
-    stone: "Kundan",
-    priceRange: "₹500 - ₹1,499",
-    metal: "German Silver",
-    weight: "Medium 40–80 grams",
-    offer: "50% OFF",
-    image:
-      "https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?auto=format&fit=crop&w=700&q=80",
-  },
+const getText = (...values) => {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
 
-  {
-    id: 3,
-    name: "Royal Pearl Drop Earrings",
-    price: 449,
-    oldPrice: 899,
-    rating: 4.7,
-    reviews: 74,
-    badge: "DAILY WEAR",
-    category: "Drops & Studs",
-    style: "Pearl Drops",
-    stone: "Pearls",
-    priceRange: "Under ₹499",
-    metal: "Hypoallergenic Brass",
-    weight: "Lightweight < 40 grams",
-    offer: "50% OFF",
-    image:
-      "https://images.unsplash.com/photo-1596944924616-7b38e7cfac36?auto=format&fit=crop&w=700&q=80",
-  },
+    if (typeof value === "number") {
+      return String(value);
+    }
+  }
 
-  {
-    id: 4,
-    name: "Padmavati Temple Jhumka",
-    price: 899,
-    oldPrice: 1899,
-    rating: 5.0,
-    reviews: 61,
-    badge: "HERITAGE",
-    category: "Jhumkas",
-    style: "Temple Jhumkas",
-    stone: "Kemp Ruby",
-    priceRange: "₹500 - ₹1,499",
-    metal: "Vintage Copper Alloy",
-    weight: "Medium 40–80 grams",
-    offer: "53% OFF",
-    image:
-      "https://images.unsplash.com/photo-1602173574767-37ac01994b2a?auto=format&fit=crop&w=700&q=80",
-  },
+  return "";
+};
 
-  {
-    id: 5,
-    name: "Sitara Kundan Studs",
-    price: 349,
-    oldPrice: 699,
-    rating: 4.6,
-    reviews: 53,
-    badge: "UNDER ₹499",
-    category: "Drops & Studs",
-    style: "Studs",
-    stone: "Kundan",
-    priceRange: "Under ₹499",
-    metal: "German Silver",
-    weight: "Lightweight < 40 grams",
-    offer: "50% OFF",
-    image:
-      "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?auto=format&fit=crop&w=700&q=80",
-  },
+const getNumber = (...values) => {
+  for (const value of values) {
+    if (value !== null && value !== undefined && value !== "") {
+      const number = Number(
+        String(value).replace(/[₹,\s]/g, "")
+      );
 
-  {
-    id: 6,
-    name: "Mehfil Pearl Chandbali",
-    price: 999,
-    oldPrice: 2199,
-    rating: 4.9,
-    reviews: 82,
-    badge: "WEDDING PICK",
-    category: "Chandbalis",
-    style: "Chandbali",
-    stone: "Pearls",
-    priceRange: "₹500 - ₹1,499",
-    metal: "Hypoallergenic Brass",
-    weight: "Medium 40–80 grams",
-    offer: "55% OFF",
-    image:
-      "https://images.unsplash.com/photo-1617038220319-276d3cfab638?auto=format&fit=crop&w=700&q=80",
-  },
+      if (Number.isFinite(number)) {
+        return number;
+      }
+    }
+  }
 
-  {
-    id: 7,
-    name: "Rani Polki Bridal Earrings",
-    price: 1499,
-    oldPrice: 2999,
-    rating: 4.9,
-    reviews: 47,
-    badge: "BRIDAL",
-    category: "Bridal Earrings",
-    style: "Bridal Chandbali",
-    stone: "Uncut Polki",
-    priceRange: "₹1,500 - ₹3,500",
-    metal: "Hypoallergenic Brass",
-    weight: "Heavy > 80 grams",
-    offer: "50% OFF",
-    image:
-      "https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&w=700&q=80",
-  },
+  return 0;
+};
 
-  {
-    id: 8,
-    name: "Aanya Gold Finish Drops",
-    price: 299,
-    oldPrice: 599,
-    rating: 4.7,
-    reviews: 112,
-    badge: "DAILY FAVORITE",
-    category: "Drops & Studs",
-    style: "Gold Drops",
-    stone: "Crystal CZ",
-    priceRange: "Under ₹499",
-    metal: "German Silver",
-    weight: "Lightweight < 40 grams",
-    offer: "50% OFF",
-    image:
-      "https://images.unsplash.com/photo-1611085583191-a3b181a88401?auto=format&fit=crop&w=700&q=80",
-  },
+const resolveImage = (value) => {
+  if (!value) return "";
+
+  if (typeof value === "object") {
+    value =
+      value.url ||
+      value.image ||
+      value.src ||
+      value.image_url ||
+      "";
+  }
+
+  if (typeof value !== "string" || !value.trim()) {
+    return "";
+  }
+
+  const image = value.trim();
+
+  if (
+    image.startsWith("http://") ||
+    image.startsWith("https://") ||
+    image.startsWith("data:")
+  ) {
+    return image;
+  }
+
+  return `${API_BASE}/${image.replace(/^\/+/, "")}`;
+};
+
+const formatPrice = (price) =>
+  `₹${Number(price || 0).toLocaleString("en-IN")}`;
+
+const normalizeProduct = (item, index) => {
+  const category =
+    typeof item.category === "object"
+      ? getText(
+          item.category?.name,
+          item.category?.title,
+          item.category?.category_name
+        )
+      : getText(item.category, item.category_name, item.category_title);
+
+  const price = getNumber(
+    item.price,
+    item.selling_price,
+    item.sale_price,
+    item.discounted_price
+  );
+
+  const oldPrice = getNumber(
+    item.old_price,
+    item.original_price,
+    item.mrp,
+    item.compare_at_price
+  );
+
+  const images = Array.isArray(item.images) ? item.images : [];
+
+  const image = resolveImage(
+    item.image ||
+      item.image_url ||
+      item.product_image ||
+      item.thumbnail ||
+      item.image1 ||
+      images[0]
+  );
+
+  const discount =
+    oldPrice > price && oldPrice > 0
+      ? Math.round(((oldPrice - price) / oldPrice) * 100)
+      : 0;
+
+  return {
+    id: item.id ?? item.pk ?? `product-${index}`,
+    name: getText(
+      item.name,
+      item.product_name,
+      item.title,
+      item.product_title
+    ) || "Untitled Product",
+
+    description: getText(
+      item.description,
+      item.short_description,
+      item.desc
+    ) || "Discover elegant jewellery from the Zinora collection.",
+
+    category,
+
+    price,
+    oldPrice,
+
+    rating: getNumber(item.rating, item.average_rating),
+    reviews: getNumber(item.reviews, item.review_count),
+
+    badge: getText(item.badge, item.tag, item.label, item.product_tag),
+    offer:
+      getText(item.offer, item.discount_label) ||
+      (discount ? `${discount}% OFF` : ""),
+
+    image,
+
+    style: getText(item.style, item.silhouette, item.product_style),
+    stone: getText(item.stone, item.stone_type, item.karigari),
+    metal: getText(item.metal, item.metal_type, item.material),
+    weight: getText(item.weight, item.product_weight),
+
+    isActive: item.is_active !== false && item.is_active !== 0,
+
+    createdAt: getText(item.created_at, item.createdAt),
+  };
+};
+
+// ======================================================
+// FILTER OPTIONS
+// ======================================================
+
+const STYLE_OPTIONS = [
+  "Traditional Jhumkas",
+  "Chandbali",
+  "Pearl Drops",
+  "Studs",
+  "Bridal Chandbali",
+  "Gold Drops",
+  "Temple Jhumkas",
 ];
 
-
-// ======================================================
-// CATEGORY DATA
-// ======================================================
-
-const categories = [
-  "All Earrings",
-  "Jhumkas",
-  "Chandbalis",
-  "Drops & Studs",
-  "Bridal Earrings",
+const STONE_OPTIONS = [
+  "Kundan",
+  "Meenakari",
+  "Pearls",
+  "Kemp Ruby",
+  "Uncut Polki",
+  "Crystal CZ",
 ];
 
+const PRICE_OPTIONS = [
+  "Under ₹499",
+  "₹500 - ₹1,499",
+  "₹1,500 - ₹3,500",
+];
+
+const METAL_OPTIONS = [
+  "Hypoallergenic Brass",
+  "German Silver",
+  "Vintage Copper Alloy",
+];
+
+const WEIGHT_OPTIONS = [
+  "Lightweight < 40 grams",
+  "Medium 40–80 grams",
+  "Heavy > 80 grams",
+];
+
+// ======================================================
+// FILTER HELPERS
+// ======================================================
+
+const matchesText = (product, field, selectedValues) => {
+  if (selectedValues.length === 0) return true;
+
+  const actualValue = getText(product[field]);
+
+  // If the backend does not provide this field,
+  // try matching the product's text fields instead.
+  const searchableText = [
+    product.name,
+    product.description,
+    product.category,
+    product.style,
+    product.stone,
+    product.metal,
+    product.weight,
+  ]
+    .join(" ")
+    .toLowerCase();
+
+  if (actualValue) {
+    return selectedValues.some(
+      (value) => actualValue.toLowerCase() === value.toLowerCase()
+    );
+  }
+
+  return selectedValues.some((value) =>
+    searchableText.includes(value.toLowerCase())
+  );
+};
+
+const matchesPrice = (product, selectedValues) => {
+  if (selectedValues.length === 0) return true;
+
+  return selectedValues.some((range) => {
+    if (range === "Under ₹499") {
+      return product.price < 500;
+    }
+
+    if (range === "₹500 - ₹1,499") {
+      return product.price >= 500 && product.price <= 1499;
+    }
+
+    if (range === "₹1,500 - ₹3,500") {
+      return product.price >= 1500 && product.price <= 3500;
+    }
+
+    return true;
+  });
+};
 
 // ======================================================
 // PRODUCT CARD
 // ======================================================
 
-function ProductCard({ product }) {
+function ProductCard({
+  product,
+  isFavorite,
+  onToggleFavorite,
+}) {
+  const [imageFailed, setImageFailed] = useState(false);
+
+  useEffect(() => {
+    setImageFailed(false);
+  }, [product.image]);
+
+  const showOldPrice = product.oldPrice > product.price;
+
   return (
     <Paper
       elevation={0}
@@ -208,86 +312,109 @@ function ProductCard({ product }) {
         backgroundColor: "#fff",
         position: "relative",
         transition: "0.25s",
-
+        minWidth: 0,
         "&:hover": {
           transform: "translateY(-4px)",
           boxShadow: "0 6px 20px rgba(0,0,0,0.10)",
         },
       }}
     >
-      {/* IMAGE */}
+      {/* PRODUCT IMAGE */}
+
       <Box
         sx={{
-          height: {
-            xs: 210,
-            sm: 230,
-            md: 245,
-          },
+          height: { xs: 210, sm: 230, md: 245 },
           position: "relative",
           backgroundColor: "#f3eee8",
           overflow: "hidden",
         }}
       >
-        <Box
-          component="img"
-          src={product.image}
-          alt={product.name}
-          sx={{
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
-            display: "block",
-            transition: "0.3s",
-
-            "&:hover": {
-              transform: "scale(1.04)",
-            },
-          }}
-        />
+        {product.image && !imageFailed ? (
+          <Box
+            component="img"
+            src={product.image}
+            alt={product.name}
+            loading="lazy"
+            onError={() => setImageFailed(true)}
+            sx={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              display: "block",
+              transition: "0.3s",
+              "&:hover": {
+                transform: "scale(1.04)",
+              },
+            }}
+          />
+        ) : (
+          <Box
+            sx={{
+              width: "100%",
+              height: "100%",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "#927c70",
+              gap: 1,
+            }}
+          >
+            <Typography sx={{ fontSize: 35 }}>♢</Typography>
+            <Typography sx={{ fontSize: 10 }}>
+              Product image unavailable
+            </Typography>
+          </Box>
+        )}
 
         {/* BADGE */}
-        <Box
-          sx={{
-            position: "absolute",
-            top: 8,
-            left: 8,
-          }}
-        >
-          <Typography
-            sx={{
-              display: "inline-block",
-              backgroundColor: "#6c0d19",
-              color: "#fff",
-              fontSize: "8px",
-              fontWeight: 700,
-              px: 0.8,
-              py: 0.4,
-            }}
-          >
-            {product.badge}
-          </Typography>
 
-          <br />
+        {product.badge && (
+          <Box sx={{ position: "absolute", top: 8, left: 8 }}>
+            <Typography
+              sx={{
+                display: "inline-block",
+                backgroundColor: "#6c0d19",
+                color: "#fff",
+                fontSize: "8px",
+                fontWeight: 700,
+                px: 0.8,
+                py: 0.4,
+              }}
+            >
+              {product.badge}
+            </Typography>
+          </Box>
+        )}
 
-          <Typography
-            sx={{
-              display: "inline-block",
-              backgroundColor: "#d71920",
-              color: "#fff",
-              fontSize: "8px",
-              fontWeight: 700,
-              px: 0.8,
-              py: 0.4,
-              mt: 0.4,
-            }}
-          >
-            {product.offer}
-          </Typography>
-        </Box>
+        {/* OFFER */}
+
+        {product.offer && (
+          <Box sx={{ position: "absolute", top: product.badge ? 29 : 8, left: 8 }}>
+            <Typography
+              sx={{
+                display: "inline-block",
+                backgroundColor: "#d71920",
+                color: "#fff",
+                fontSize: "8px",
+                fontWeight: 700,
+                px: 0.8,
+                py: 0.4,
+              }}
+            >
+              {product.offer}
+            </Typography>
+          </Box>
+        )}
 
         {/* WISHLIST */}
+
         <IconButton
           size="small"
+          aria-label={
+            isFavorite ? "Remove from wishlist" : "Add to wishlist"
+          }
+          onClick={() => onToggleFavorite(product.id)}
           sx={{
             position: "absolute",
             right: 8,
@@ -295,24 +422,22 @@ function ProductCard({ product }) {
             backgroundColor: "#fff",
             width: 30,
             height: 30,
-
             "&:hover": {
-              backgroundColor: "#fff",
+              backgroundColor: "#fff5f5",
             },
           }}
         >
-          <FavoriteBorderIcon
-            sx={{
-              fontSize: 17,
-              color: "#6c0d19",
-            }}
-          />
+          {isFavorite ? (
+            <FavoriteIcon sx={{ fontSize: 17, color: "#d71920" }} />
+          ) : (
+            <FavoriteBorderIcon sx={{ fontSize: 17, color: "#6c0d19" }} />
+          )}
         </IconButton>
       </Box>
 
       {/* PRODUCT DETAILS */}
+
       <Box sx={{ p: 1.2 }}>
-        {/* RATING */}
         <Box
           sx={{
             display: "flex",
@@ -320,34 +445,21 @@ function ProductCard({ product }) {
             gap: 0.4,
           }}
         >
-          <StarIcon
-            sx={{
-              fontSize: 12,
-              color: "#d69b00",
-            }}
-          />
+          <StarIcon sx={{ fontSize: 12, color: "#d69b00" }} />
 
-          <Typography
-            sx={{
-              fontSize: "9px",
-              fontWeight: 700,
-            }}
-          >
-            {product.rating}
+          <Typography sx={{ fontSize: "9px", fontWeight: 700 }}>
+            {product.rating ? product.rating.toFixed(1) : "New"}
           </Typography>
 
-          <Typography
-            sx={{
-              fontSize: "8px",
-              color: "#777",
-            }}
-          >
-            ({product.reviews} reviews)
-          </Typography>
+          {product.reviews > 0 && (
+            <Typography sx={{ fontSize: "8px", color: "#777" }}>
+              ({product.reviews} reviews)
+            </Typography>
+          )}
         </Box>
 
-        {/* NAME */}
         <Typography
+          title={product.name}
           sx={{
             fontSize: "12px",
             fontWeight: 600,
@@ -361,26 +473,31 @@ function ProductCard({ product }) {
           {product.name}
         </Typography>
 
-        {/* DESCRIPTION */}
         <Typography
           sx={{
-            fontSize: "7.5px",
+            fontSize: "8px",
             color: "#888",
             mt: 0.4,
-            lineHeight: 1.4,
+            lineHeight: 1.5,
+            minHeight: 24,
+            display: "-webkit-box",
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: "vertical",
+            overflow: "hidden",
           }}
         >
-          Handcrafted jewellery with elegant finishing for modern
-          Indian occasions.
+          {product.description}
         </Typography>
 
         {/* PRICE */}
+
         <Box
           sx={{
             display: "flex",
             alignItems: "center",
             gap: 0.8,
             mt: 0.8,
+            flexWrap: "wrap",
           }}
         >
           <Typography
@@ -390,28 +507,23 @@ function ProductCard({ product }) {
               fontWeight: 700,
             }}
           >
-            ₹{product.price.toLocaleString("en-IN")}
+            {formatPrice(product.price)}
           </Typography>
 
-          <Typography
-            sx={{
-              color: "#999",
-              fontSize: "8px",
-              textDecoration: "line-through",
-            }}
-          >
-            ₹{product.oldPrice.toLocaleString("en-IN")}
-          </Typography>
+          {showOldPrice && (
+            <Typography
+              sx={{
+                color: "#999",
+                fontSize: "8px",
+                textDecoration: "line-through",
+              }}
+            >
+              {formatPrice(product.oldPrice)}
+            </Typography>
+          )}
         </Box>
 
-        {/* DELIVERY */}
-        <Typography
-          sx={{
-            fontSize: "7px",
-            color: "#777",
-            mt: 0.5,
-          }}
-        >
+        <Typography sx={{ fontSize: "7px", color: "#777", mt: 0.5 }}>
           ✓ Free Express Delivery
         </Typography>
       </Box>
@@ -419,35 +531,142 @@ function ProductCard({ product }) {
   );
 }
 
-
 // ======================================================
 // MAIN EARRINGS PAGE
 // ======================================================
 
 function Earrings() {
-  // ----------------------------------------------------
-  // FILTER STATES
-  // ----------------------------------------------------
+  // ====================================================
+  // DYNAMIC DATA STATES
+  // ====================================================
 
-  const [selectedCategory, setSelectedCategory] =
-    useState("All Earrings");
+  const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [categoryError, setCategoryError] = useState("");
+
+  // ====================================================
+  // FILTER STATES
+  // ====================================================
+
+  const [selectedCategory, setSelectedCategory] = useState("All Earrings");
 
   const [selectedStyle, setSelectedStyle] = useState([]);
-
   const [selectedStone, setSelectedStone] = useState([]);
-
   const [selectedPrice, setSelectedPrice] = useState([]);
-
   const [selectedMetal, setSelectedMetal] = useState([]);
-
   const [selectedWeight, setSelectedWeight] = useState([]);
 
   const [sortBy, setSortBy] = useState("featured");
 
+  const [favorites, setFavorites] = useState(() => {
+    try {
+      const saved = localStorage.getItem("zinoraWishlist");
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
 
-  // ----------------------------------------------------
-  // TOGGLE FUNCTION
-  // ----------------------------------------------------
+  // ====================================================
+  // FETCH PRODUCTS AND CATEGORIES FROM DJANGO
+  // ====================================================
+
+  const fetchData = async () => {
+    setLoading(true);
+    setError("");
+    setCategoryError("");
+
+    try {
+      const productsResponse = await fetch(PRODUCTS_API);
+
+      if (!productsResponse.ok) {
+        throw new Error(
+          `Products API error: ${productsResponse.status}`
+        );
+      }
+
+      const productsData = await productsResponse.json();
+
+      const normalizedProducts = getArray(productsData)
+        .map(normalizeProduct)
+        .filter((product) => product.isActive);
+
+      setProducts(normalizedProducts);
+    } catch (err) {
+      console.error("Products API error:", err);
+      setError(
+        "Products load nahi ho paaye. Django backend aur Products API check karo."
+      );
+      setProducts([]);
+    }
+
+    try {
+      const categoriesResponse = await fetch(CATEGORIES_API);
+
+      if (!categoriesResponse.ok) {
+        throw new Error(
+          `Categories API error: ${categoriesResponse.status}`
+        );
+      }
+
+      const categoriesData = await categoriesResponse.json();
+
+      const normalizedCategories = getArray(categoriesData)
+        .filter(
+          (category) =>
+            category.is_active !== false && category.is_active !== 0
+        )
+        .map((category) =>
+          getText(
+            category.name,
+            category.title,
+            category.category_name
+          )
+        )
+        .filter(Boolean);
+
+      setCategories([...new Set(normalizedCategories)]);
+    } catch (err) {
+      console.error("Categories API error:", err);
+      setCategoryError(
+        "Categories API load nahi hui. Product categories se tabs dikhaye ja rahe hain."
+      );
+      setCategories([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  // ====================================================
+  // DYNAMIC CATEGORY TABS
+  // ====================================================
+
+  const categoryOptions = useMemo(() => {
+    const productCategories = products
+      .map((product) => product.category)
+      .filter(Boolean);
+
+    const allCategories = [
+      ...categories,
+      ...productCategories,
+    ];
+
+    return [
+      "All Earrings",
+      ...new Set(allCategories),
+    ];
+  }, [categories, products]);
+
+  // ====================================================
+  // TOGGLE FILTER
+  // ====================================================
 
   const toggleFilter = (setter, value) => {
     setter((previous) =>
@@ -457,10 +676,32 @@ function Earrings() {
     );
   };
 
+  // ====================================================
+  // WISHLIST
+  // ====================================================
 
-  // ----------------------------------------------------
+  const toggleFavorite = (productId) => {
+    setFavorites((previous) => {
+      const updated = previous.includes(productId)
+        ? previous.filter((id) => id !== productId)
+        : [...previous, productId];
+
+      try {
+        localStorage.setItem(
+          "zinoraWishlist",
+          JSON.stringify(updated)
+        );
+      } catch (err) {
+        console.error("Wishlist storage error:", err);
+      }
+
+      return updated;
+    });
+  };
+
+  // ====================================================
   // RESET FILTERS
-  // ----------------------------------------------------
+  // ====================================================
 
   const resetFilters = () => {
     setSelectedCategory("All Earrings");
@@ -472,36 +713,45 @@ function Earrings() {
     setSortBy("featured");
   };
 
-
-  // ----------------------------------------------------
-  // FILTER PRODUCTS
-  // ----------------------------------------------------
+  // ====================================================
+  // FILTER AND SORT DYNAMIC PRODUCTS
+  // ====================================================
 
   const filteredProducts = useMemo(() => {
     let result = products.filter((product) => {
       const categoryMatch =
         selectedCategory === "All Earrings" ||
-        product.category === selectedCategory;
+        product.category.toLowerCase() ===
+          selectedCategory.toLowerCase();
 
-      const styleMatch =
-        selectedStyle.length === 0 ||
-        selectedStyle.includes(product.style);
+      const styleMatch = matchesText(
+        product,
+        "style",
+        selectedStyle
+      );
 
-      const stoneMatch =
-        selectedStone.length === 0 ||
-        selectedStone.includes(product.stone);
+      const stoneMatch = matchesText(
+        product,
+        "stone",
+        selectedStone
+      );
 
-      const priceMatch =
-        selectedPrice.length === 0 ||
-        selectedPrice.includes(product.priceRange);
+      const priceMatch = matchesPrice(
+        product,
+        selectedPrice
+      );
 
-      const metalMatch =
-        selectedMetal.length === 0 ||
-        selectedMetal.includes(product.metal);
+      const metalMatch = matchesText(
+        product,
+        "metal",
+        selectedMetal
+      );
 
-      const weightMatch =
-        selectedWeight.length === 0 ||
-        selectedWeight.includes(product.weight);
+      const weightMatch = matchesText(
+        product,
+        "weight",
+        selectedWeight
+      );
 
       return (
         categoryMatch &&
@@ -513,22 +763,17 @@ function Earrings() {
       );
     });
 
-
-    // SORT
     if (sortBy === "low") {
       result.sort((a, b) => a.price - b.price);
-    }
-
-    if (sortBy === "high") {
+    } else if (sortBy === "high") {
       result.sort((a, b) => b.price - a.price);
-    }
-
-    if (sortBy === "rating") {
+    } else if (sortBy === "rating") {
       result.sort((a, b) => b.rating - a.rating);
     }
 
     return result;
   }, [
+    products,
     selectedCategory,
     selectedStyle,
     selectedStone,
@@ -537,7 +782,6 @@ function Earrings() {
     selectedWeight,
     sortBy,
   ]);
-
 
   // ====================================================
   // PAGE UI
@@ -549,27 +793,17 @@ function Earrings() {
         backgroundColor: "#faf9f7",
         minHeight: "100vh",
         color: "#4d1717",
+        pb: 0,
       }}
     >
-
-      {/* ==================================================
-          HERO SECTION
-      ================================================== */}
+      {/* HERO SECTION */}
 
       <Box
         sx={{
-          px: {
-            xs: 2,
-            md: 5,
-          },
-          pt: {
-            xs: 2,
-            md: 3,
-          },
+          px: { xs: 2, md: 5 },
+          pt: { xs: 2, md: 3 },
         }}
       >
-        {/* BREADCRUMB */}
-
         <Typography
           sx={{
             fontSize: "9px",
@@ -580,9 +814,6 @@ function Earrings() {
           Home › Jewellery › Earrings & Jhumkas
         </Typography>
 
-
-        {/* HERO */}
-
         <Box
           sx={{
             display: "grid",
@@ -590,31 +821,23 @@ function Earrings() {
               xs: "1fr",
               md: "1.15fr 0.85fr",
             },
-            gap: {
-              xs: 2,
-              md: 4,
-            },
+            gap: { xs: 2, md: 4 },
             alignItems: "center",
           }}
         >
-
           {/* LEFT SIDE */}
 
           <Box>
             <Typography
               sx={{
                 color: "#9a731f",
-                fontSize: {
-                  xs: "9px",
-                  md: "11px",
-                },
+                fontSize: { xs: "9px", md: "11px" },
                 letterSpacing: 1.2,
                 fontWeight: 600,
               }}
             >
               ROYAL HERITAGE ORNAMENTATION — Vol. VI Collection
             </Typography>
-
 
             <Typography
               sx={{
@@ -632,7 +855,6 @@ function Earrings() {
             >
               Earrings, Jhumkas
               <br />
-
               <Box
                 component="span"
                 sx={{
@@ -644,14 +866,10 @@ function Earrings() {
               </Box>
             </Typography>
 
-
             <Typography
               sx={{
                 color: "#746966",
-                fontSize: {
-                  xs: "10px",
-                  md: "11px",
-                },
+                fontSize: { xs: "10px", md: "11px" },
                 lineHeight: 1.6,
                 maxWidth: 600,
                 mt: 1.5,
@@ -663,15 +881,17 @@ function Earrings() {
               celebrations.
             </Typography>
 
-
             <Button
               variant="contained"
               endIcon={
                 <ArrowForwardIcon
-                  sx={{
-                    fontSize: "13px !important",
-                  }}
+                  sx={{ fontSize: "13px !important" }}
                 />
+              }
+              onClick={() =>
+                document
+                  .getElementById("earrings-products")
+                  ?.scrollIntoView({ behavior: "smooth" })
               }
               sx={{
                 mt: 2,
@@ -681,7 +901,6 @@ function Earrings() {
                 fontSize: "9px",
                 px: 2,
                 py: 1,
-
                 "&:hover": {
                   backgroundColor: "#4d0710",
                 },
@@ -691,8 +910,7 @@ function Earrings() {
             </Button>
           </Box>
 
-
-          {/* RIGHT IMAGE */}
+          {/* HERO IMAGE */}
 
           <Paper
             elevation={0}
@@ -710,8 +928,14 @@ function Earrings() {
           >
             <Box
               component="img"
-              src="https://images.unsplash.com/photo-1611652022419-a9419f74343d?auto=format&fit=crop&w=1000&q=85"
+              src={
+                products.find((product) => product.image)?.image ||
+                ""
+              }
               alt="Zinora earrings collection"
+              onError={(event) => {
+                event.currentTarget.style.display = "none";
+              }}
               sx={{
                 width: "100%",
                 height: "100%",
@@ -756,29 +980,22 @@ function Earrings() {
         </Box>
       </Box>
 
-
-      {/* ==================================================
-          CATEGORY TABS
-      ================================================== */}
+      {/* DYNAMIC CATEGORY TABS */}
 
       <Box
         sx={{
-          px: {
-            xs: 2,
-            md: 5,
-          },
+          px: { xs: 2, md: 5 },
           mt: 3,
           display: "flex",
           gap: 1,
           overflowX: "auto",
           pb: 1,
-
           "&::-webkit-scrollbar": {
             display: "none",
           },
         }}
       >
-        {categories.map((category) => (
+        {categoryOptions.map((category) => (
           <Button
             key={category}
             onClick={() => setSelectedCategory(category)}
@@ -790,22 +1007,18 @@ function Earrings() {
               py: 0.8,
               minHeight: 30,
               borderRadius: "5px",
-
               backgroundColor:
                 selectedCategory === category
                   ? "#650c18"
                   : "#fff",
-
               color:
                 selectedCategory === category
                   ? "#fff"
                   : "#6a3333",
-
               border:
                 selectedCategory === category
                   ? "none"
                   : "1px solid #eee6df",
-
               "&:hover": {
                 backgroundColor:
                   selectedCategory === category
@@ -814,22 +1027,34 @@ function Earrings() {
               },
             }}
           >
-            {category}
+            {category === "All Earrings"
+              ? `All Earrings (${products.length})`
+              : category}
           </Button>
         ))}
       </Box>
 
+      {/* API STATUS */}
 
-      {/* ==================================================
-          PRODUCT COUNT + SORT
-      ================================================== */}
+      {categoryError && (
+        <Typography
+          sx={{
+            mx: { xs: 2, md: 5 },
+            mt: 1,
+            fontSize: 10,
+            color: "#9a731f",
+          }}
+        >
+          {categoryError}
+        </Typography>
+      )}
+
+      {/* PRODUCT COUNT AND SORT */}
 
       <Box
+        id="earrings-products"
         sx={{
-          px: {
-            xs: 2,
-            md: 5,
-          },
+          px: { xs: 2, md: 5 },
           mt: 1,
         }}
       >
@@ -854,33 +1079,27 @@ function Earrings() {
             }}
           >
             {filteredProducts.length} Handcrafted Pieces
-            <span
-              style={{
+            <Box
+              component="span"
+              sx={{
                 color: "#aaa",
-                margin: "0 7px",
+                mx: 1,
               }}
             >
               |
-            </span>
+            </Box>
             Royal Earrings Collection
           </Typography>
-
 
           <FormControl size="small">
             <Select
               value={sortBy}
-              onChange={(event) =>
-                setSortBy(event.target.value)
-              }
+              onChange={(event) => setSortBy(event.target.value)}
               sx={{
                 height: 28,
                 fontSize: "8px",
-                minWidth: {
-                  xs: 145,
-                  sm: 170,
-                },
+                minWidth: { xs: 145, sm: 170 },
                 backgroundColor: "#fafafa",
-
                 "& fieldset": {
                   border: "none",
                 },
@@ -889,15 +1108,12 @@ function Earrings() {
               <MenuItem value="featured">
                 Sort: Featured & Popularity
               </MenuItem>
-
               <MenuItem value="low">
                 Price: Low to High
               </MenuItem>
-
               <MenuItem value="high">
                 Price: High to Low
               </MenuItem>
-
               <MenuItem value="rating">
                 Highest Rated
               </MenuItem>
@@ -906,17 +1122,11 @@ function Earrings() {
         </Paper>
       </Box>
 
-
-      {/* ==================================================
-          FILTER + PRODUCTS
-      ================================================== */}
+      {/* FILTERS AND PRODUCTS */}
 
       <Box
         sx={{
-          px: {
-            xs: 2,
-            md: 5,
-          },
+          px: { xs: 2, md: 5 },
           mt: 2,
           display: "grid",
           gridTemplateColumns: {
@@ -926,10 +1136,7 @@ function Earrings() {
           gap: 2,
         }}
       >
-
-        {/* =================================================
-            FILTER SIDEBAR
-        ================================================= */}
+        {/* FILTER SIDEBAR */}
 
         <Paper
           elevation={0}
@@ -940,9 +1147,6 @@ function Earrings() {
             backgroundColor: "#fff",
           }}
         >
-
-          {/* FILTER HEADER */}
-
           <Box
             sx={{
               display: "flex",
@@ -964,7 +1168,6 @@ function Earrings() {
                   verticalAlign: "middle",
                 }}
               />
-
               Filters
             </Typography>
 
@@ -981,9 +1184,7 @@ function Earrings() {
             </Button>
           </Box>
 
-
           <Divider sx={{ my: 1 }} />
-
 
           {/* STYLE */}
 
@@ -998,30 +1199,18 @@ function Earrings() {
           </Typography>
 
           <FormGroup>
-            {[
-              "Traditional Jhumkas",
-              "Chandbali",
-              "Pearl Drops",
-              "Studs",
-              "Bridal Chandbali",
-              "Gold Drops",
-              "Temple Jhumkas",
-            ].map((item) => (
+            {STYLE_OPTIONS.map((item) => (
               <FormControlLabel
                 key={item}
                 control={
                   <Checkbox
                     checked={selectedStyle.includes(item)}
                     onChange={() =>
-                      toggleFilter(
-                        setSelectedStyle,
-                        item
-                      )
+                      toggleFilter(setSelectedStyle, item)
                     }
                     size="small"
                     sx={{
                       p: 0.3,
-
                       "& .MuiSvgIcon-root": {
                         fontSize: 13,
                       },
@@ -1029,11 +1218,7 @@ function Earrings() {
                   />
                 }
                 label={
-                  <Typography
-                    sx={{
-                      fontSize: "8px",
-                    }}
-                  >
+                  <Typography sx={{ fontSize: "8px" }}>
                     {item}
                   </Typography>
                 }
@@ -1045,9 +1230,7 @@ function Earrings() {
             ))}
           </FormGroup>
 
-
           <Divider sx={{ my: 1.5 }} />
-
 
           {/* STONE */}
 
@@ -1068,14 +1251,7 @@ function Earrings() {
               flexWrap: "wrap",
             }}
           >
-            {[
-              "Kundan",
-              "Meenakari",
-              "Pearls",
-              "Kemp Ruby",
-              "Uncut Polki",
-              "Crystal CZ",
-            ].map((item) => (
+            {STONE_OPTIONS.map((item) => (
               <Chip
                 key={item}
                 label={item}
@@ -1097,9 +1273,7 @@ function Earrings() {
             ))}
           </Box>
 
-
           <Divider sx={{ my: 1.5 }} />
-
 
           {/* PRICE */}
 
@@ -1113,26 +1287,18 @@ function Earrings() {
           </Typography>
 
           <FormGroup>
-            {[
-              "Under ₹499",
-              "₹500 - ₹1,499",
-              "₹1,500 - ₹3,500",
-            ].map((item) => (
+            {PRICE_OPTIONS.map((item) => (
               <FormControlLabel
                 key={item}
                 control={
                   <Checkbox
                     checked={selectedPrice.includes(item)}
                     onChange={() =>
-                      toggleFilter(
-                        setSelectedPrice,
-                        item
-                      )
+                      toggleFilter(setSelectedPrice, item)
                     }
                     size="small"
                     sx={{
                       p: 0.3,
-
                       "& .MuiSvgIcon-root": {
                         fontSize: 13,
                       },
@@ -1140,24 +1306,16 @@ function Earrings() {
                   />
                 }
                 label={
-                  <Typography
-                    sx={{
-                      fontSize: "8px",
-                    }}
-                  >
+                  <Typography sx={{ fontSize: "8px" }}>
                     {item}
                   </Typography>
                 }
-                sx={{
-                  m: 0,
-                }}
+                sx={{ m: 0 }}
               />
             ))}
           </FormGroup>
 
-
           <Divider sx={{ my: 1.5 }} />
-
 
           {/* METAL */}
 
@@ -1171,26 +1329,18 @@ function Earrings() {
           </Typography>
 
           <FormGroup>
-            {[
-              "Hypoallergenic Brass",
-              "German Silver",
-              "Vintage Copper Alloy",
-            ].map((item) => (
+            {METAL_OPTIONS.map((item) => (
               <FormControlLabel
                 key={item}
                 control={
                   <Checkbox
                     checked={selectedMetal.includes(item)}
                     onChange={() =>
-                      toggleFilter(
-                        setSelectedMetal,
-                        item
-                      )
+                      toggleFilter(setSelectedMetal, item)
                     }
                     size="small"
                     sx={{
                       p: 0.3,
-
                       "& .MuiSvgIcon-root": {
                         fontSize: 13,
                       },
@@ -1198,24 +1348,16 @@ function Earrings() {
                   />
                 }
                 label={
-                  <Typography
-                    sx={{
-                      fontSize: "8px",
-                    }}
-                  >
+                  <Typography sx={{ fontSize: "8px" }}>
                     {item}
                   </Typography>
                 }
-                sx={{
-                  m: 0,
-                }}
+                sx={{ m: 0 }}
               />
             ))}
           </FormGroup>
 
-
           <Divider sx={{ my: 1.5 }} />
-
 
           {/* WEIGHT */}
 
@@ -1229,26 +1371,18 @@ function Earrings() {
           </Typography>
 
           <FormGroup>
-            {[
-              "Lightweight < 40 grams",
-              "Medium 40–80 grams",
-              "Heavy > 80 grams",
-            ].map((item) => (
+            {WEIGHT_OPTIONS.map((item) => (
               <FormControlLabel
                 key={item}
                 control={
                   <Checkbox
                     checked={selectedWeight.includes(item)}
                     onChange={() =>
-                      toggleFilter(
-                        setSelectedWeight,
-                        item
-                      )
+                      toggleFilter(setSelectedWeight, item)
                     }
                     size="small"
                     sx={{
                       p: 0.3,
-
                       "& .MuiSvgIcon-root": {
                         fontSize: 13,
                       },
@@ -1256,21 +1390,14 @@ function Earrings() {
                   />
                 }
                 label={
-                  <Typography
-                    sx={{
-                      fontSize: "8px",
-                    }}
-                  >
+                  <Typography sx={{ fontSize: "8px" }}>
                     {item}
                   </Typography>
                 }
-                sx={{
-                  m: 0,
-                }}
+                sx={{ m: 0 }}
               />
             ))}
           </FormGroup>
-
 
           {/* SKIN SAFE */}
 
@@ -1307,35 +1434,52 @@ function Earrings() {
           </Box>
         </Paper>
 
-
-        {/* =================================================
-            PRODUCT GRID
-        ================================================= */}
+        {/* PRODUCT GRID */}
 
         <Box
           sx={{
             display: "grid",
             gridTemplateColumns: {
               xs: "1fr",
-              sm: "repeat(2, 1fr)",
-              lg: "repeat(3, 1fr)",
+              sm: "repeat(2, minmax(0, 1fr))",
+              lg: "repeat(3, minmax(0, 1fr))",
             },
             gap: 1.5,
             alignContent: "start",
+            minWidth: 0,
           }}
         >
-          {filteredProducts.length > 0 ? (
-            filteredProducts.map((product) => (
-              <ProductCard
-                key={product.id}
-                product={product}
+          {/* LOADING */}
+
+          {loading && (
+            <Box
+              sx={{
+                gridColumn: "1 / -1",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                py: 8,
+                gap: 2,
+              }}
+            >
+              <CircularProgress
+                size={32}
+                sx={{ color: "#680b18" }}
               />
-            ))
-          ) : (
+
+              <Typography sx={{ fontSize: 11, color: "#777" }}>
+                Loading earrings from Zinora...
+              </Typography>
+            </Box>
+          )}
+
+          {/* API ERROR */}
+
+          {!loading && error && (
             <Paper
               elevation={0}
               sx={{
-                p: 5,
+                p: 4,
                 textAlign: "center",
                 gridColumn: "1 / -1",
                 border: "1px solid #ebe5df",
@@ -1343,57 +1487,117 @@ function Earrings() {
             >
               <Typography
                 sx={{
-                  fontFamily: "Georgia, serif",
                   color: "#680b18",
-                  fontSize: "22px",
+                  fontSize: 14,
+                  fontWeight: 700,
                 }}
               >
-                No Earrings Found
+                Unable to Load Products
               </Typography>
 
               <Typography
                 sx={{
                   color: "#777",
-                  fontSize: "9px",
+                  fontSize: 10,
                   mt: 1,
                 }}
               >
-                Try changing or resetting your filters.
+                {error}
               </Typography>
 
               <Button
-                onClick={resetFilters}
+                onClick={fetchData}
+                variant="contained"
                 sx={{
                   mt: 2,
                   backgroundColor: "#680b18",
-                  color: "#fff",
-                  fontSize: "8px",
                   textTransform: "none",
-                  px: 2,
-
+                  fontSize: 10,
                   "&:hover": {
                     backgroundColor: "#4d0710",
                   },
                 }}
               >
-                Reset Filters
+                Retry
               </Button>
             </Paper>
           )}
+
+          {/* PRODUCTS */}
+
+          {!loading &&
+            !error &&
+            filteredProducts.map((product) => (
+              <ProductCard
+                key={product.id}
+                product={product}
+                isFavorite={favorites.includes(product.id)}
+                onToggleFavorite={toggleFavorite}
+              />
+            ))}
+
+          {/* EMPTY STATE */}
+
+          {!loading &&
+            !error &&
+            filteredProducts.length === 0 && (
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 5,
+                  textAlign: "center",
+                  gridColumn: "1 / -1",
+                  border: "1px solid #ebe5df",
+                }}
+              >
+                <Typography
+                  sx={{
+                    fontFamily: "Georgia, serif",
+                    color: "#680b18",
+                    fontSize: "22px",
+                  }}
+                >
+                  No Earrings Found
+                </Typography>
+
+                <Typography
+                  sx={{
+                    color: "#777",
+                    fontSize: "10px",
+                    mt: 1,
+                  }}
+                >
+                  Products abhi available nahi hain ya selected
+                  filters se match nahi karte. Backend mein products
+                  aur categories check karo.
+                </Typography>
+
+                <Button
+                  onClick={resetFilters}
+                  sx={{
+                    mt: 2,
+                    backgroundColor: "#680b18",
+                    color: "#fff",
+                    fontSize: "9px",
+                    textTransform: "none",
+                    px: 2,
+                    "&:hover": {
+                      backgroundColor: "#4d0710",
+                    },
+                  }}
+                >
+                  Reset Filters
+                </Button>
+              </Paper>
+            )}
         </Box>
       </Box>
 
-
-      {/* ==================================================
-          STYLIST CTA
-      ================================================== */}
+      {/* STYLIST CTA */}
 
       <Box
         sx={{
-          px: {
-            xs: 2,
-            md: 5,
-          },
+          px: { xs: 2, md: 5 },
           mt: 3,
         }}
       >
@@ -1444,13 +1648,19 @@ function Earrings() {
 
           <Button
             variant="contained"
+            onClick={() => {
+              window.open(
+                "https://wa.me/",
+                "_blank",
+                "noopener,noreferrer"
+              );
+            }}
             sx={{
               backgroundColor: "#075d39",
               fontSize: "8px",
               fontWeight: 700,
               textTransform: "none",
               px: 2,
-
               "&:hover": {
                 backgroundColor: "#064c30",
               },
@@ -1461,17 +1671,11 @@ function Earrings() {
         </Paper>
       </Box>
 
-
-      {/* ==================================================
-          STYLING GUIDE
-      ================================================== */}
+      {/* STYLING GUIDE */}
 
       <Box
         sx={{
-          px: {
-            xs: 2,
-            md: 5,
-          },
+          px: { xs: 2, md: 5 },
           mt: 5,
           textAlign: "center",
         }}
@@ -1490,10 +1694,7 @@ function Earrings() {
           sx={{
             fontFamily: "Georgia, serif",
             color: "#560914",
-            fontSize: {
-              xs: "24px",
-              md: "30px",
-            },
+            fontSize: { xs: "24px", md: "30px" },
             mt: 0.5,
           }}
         >
@@ -1512,7 +1713,6 @@ function Earrings() {
           Discover the perfect earring silhouette for festive
           sarees, bridal outfits and everyday Indian looks.
         </Typography>
-
 
         <Box
           sx={{
@@ -1613,20 +1813,14 @@ function Earrings() {
         </Box>
       </Box>
 
-
-      {/* ==================================================
-          PROMISE STRIP
-      ================================================== */}
+      {/* PROMISE STRIP */}
 
       <Box
         sx={{
           mt: 4,
           backgroundColor: "#680b18",
           color: "#fff",
-          px: {
-            xs: 2,
-            md: 5,
-          },
+          px: { xs: 2, md: 5 },
           py: 2,
           display: "grid",
           gridTemplateColumns: {
@@ -1698,18 +1892,12 @@ function Earrings() {
         ))}
       </Box>
 
-
-      {/* ==================================================
-          NEWSLETTER / COLLECTION CTA
-      ================================================== */}
+      {/* NEWSLETTER / COLLECTION CTA */}
 
       <Box
         sx={{
           backgroundColor: "#f6f3ef",
-          px: {
-            xs: 2,
-            md: 5,
-          },
+          px: { xs: 2, md: 5 },
           py: 3,
           display: "flex",
           justifyContent: "space-between",
@@ -1754,11 +1942,15 @@ function Earrings() {
 
         <Button
           variant="contained"
+          onClick={() =>
+            document
+              .getElementById("earrings-products")
+              ?.scrollIntoView({ behavior: "smooth" })
+          }
           sx={{
             backgroundColor: "#680b18",
             fontSize: "8px",
             textTransform: "uppercase",
-
             "&:hover": {
               backgroundColor: "#4d0710",
             },
@@ -1767,7 +1959,6 @@ function Earrings() {
           Explore More →
         </Button>
       </Box>
-
     </Box>
   );
 }
