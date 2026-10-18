@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 
 import {
 Box,
@@ -46,91 +46,47 @@ import {
 } from "@mui/icons-material";
 
 const MAROON = "#650c20";
-const CATEGORIES = [
-"Necklaces & Chokers",
-"Earrings & Jhumkas",
-"Bangles & Kadas",
-"Rings & Pendants",
-"Bridal & Festive",
-];
+const API_BASE = (import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
+const PRODUCTS_API = `${API_BASE}/api/products/`;
+const CATEGORIES_API = `${API_BASE}/api/products/categories/`;
 
 const EMPTY_PRODUCT = {
-name: "",
-sku: "",
-category: "",
-price: "",
-originalPrice: "",
-stock: "",
-description: "",
-image: "",
-status: true,
+  name: "", sku: "", category: "", categoryId: "", price: "",
+  originalPrice: "", stock: "", description: "", status: true,
 };
 
-const INITIAL_PRODUCTS = [
-{
-id: 1,
-name: "Royal Kundan Necklace",
-sku: "ZIN-NK-001",
-category: "Necklaces & Chokers",
-price: 1299,
-originalPrice: 1799,
-stock: 25,
-description: "Traditional kundan necklace for special occasions.",
-image: "",
-status: true,
-},
-{
-id: 2,
-name: "Pearl Drop Jhumkas",
-sku: "ZIN-ER-002",
-category: "Earrings & Jhumkas",
-price: 599,
-originalPrice: 899,
-stock: 42,
-description: "Elegant pearl drop jhumkas.",
-image: "",
-status: true,
-},
-{
-id: 3,
-name: "Golden Kada Pair",
-sku: "ZIN-BG-003",
-category: "Bangles & Kadas",
-price: 899,
-originalPrice: 1199,
-stock: 8,
-description: "Gold-finish kada pair.",
-image: "",
-status: true,
-},
-{
-id: 4,
-name: "Classic Floral Ring",
-sku: "ZIN-RG-004",
-category: "Rings & Pendants",
-price: 349,
-originalPrice: 499,
-stock: 0,
-description: "Floral design fashion ring.",
-image: "",
-status: false,
-},
-{
-id: 5,
-name: "Bridal Polki Set",
-sku: "ZIN-BR-005",
-category: "Bridal & Festive",
-price: 2499,
-originalPrice: 3299,
-stock: 12,
-description: "Statement bridal jewellery set.",
-image: "",
-status: true,
-},
-];
+const getAuthHeaders = () => {
+  const token = localStorage.getItem("zinoraAdminToken");
+  return token ? { Authorization: `Token ${token}` } : {};
+};
+
+const getImageUrl = (image) => {
+  if (!image) return "";
+  if (image.startsWith("http://") || image.startsWith("https://") || image.startsWith("data:")) return image;
+  return `${API_BASE}${image.startsWith("/") ? "" : "/"}${image}`;
+};
+
+const normalizeProduct = (item) => ({
+  id: item.id,
+  name: item.name || "",
+  sku: item.sku || "",
+  category: item.category_name || item.category_detail?.name || "",
+  categoryId: String(item.category ?? item.category_id ?? ""),
+  price: Number(item.price || 0),
+  originalPrice: item.original_price == null ? "" : Number(item.original_price),
+  stock: Number(item.stock_quantity || 0),
+  description: item.description || "",
+  image: getImageUrl(item.image),
+  status: Boolean(item.is_active),
+});
 
 function Products() {
-const [products, setProducts] = useState(INITIAL_PRODUCTS);
+const [products, setProducts] = useState([]);
+const [categories, setCategories] = useState([]);
+const [loading, setLoading] = useState(true);
+const [apiError, setApiError] = useState("");
+const [saving, setSaving] = useState(false);
+const [imageFile, setImageFile] = useState(null);
 
 const [search, setSearch] = useState("");
 const [categoryFilter, setCategoryFilter] = useState("All");
@@ -143,6 +99,29 @@ const [formError, setFormError] = useState("");
 const [deleteId, setDeleteId] = useState(null);
 
 const [imagePreview, setImagePreview] = useState("");
+
+const loadData = async () => {
+  setLoading(true);
+  setApiError("");
+  try {
+    const [productsResponse, categoriesResponse] = await Promise.all([
+      fetch(PRODUCTS_API, { headers: getAuthHeaders() }),
+      fetch(CATEGORIES_API, { headers: getAuthHeaders() }),
+    ]);
+    if (!productsResponse.ok) throw new Error(`Products API error (${productsResponse.status}).`);
+    if (!categoriesResponse.ok) throw new Error(`Categories API error (${categoriesResponse.status}).`);
+    const productsJson = await productsResponse.json();
+    const categoriesJson = await categoriesResponse.json();
+    setProducts((Array.isArray(productsJson) ? productsJson : productsJson.results || []).map(normalizeProduct));
+    setCategories(Array.isArray(categoriesJson) ? categoriesJson : categoriesJson.results || []);
+  } catch (error) {
+    setApiError(`${error.message} Check that Django is running and the API URLs are configured.`);
+  } finally {
+    setLoading(false);
+  }
+};
+
+useEffect(() => { loadData(); }, []);
 
 const filteredProducts = useMemo(() => {
 return products.filter((product) => {
@@ -182,6 +161,7 @@ setEditingId(null);
 setForm({ ...EMPTY_PRODUCT });
 setFormError("");
 setImagePreview("");
+setImageFile(null);
 setDialogOpen(true);
 };
 
@@ -189,12 +169,8 @@ const openEditDialog = (product) => {
 setEditingId(product.id);
 
 
-setForm({
-  ...product,
-  price: String(product.price),
-  originalPrice: String(product.originalPrice),
-  stock: String(product.stock),
-});
+setForm({ ...product, categoryId: String(product.categoryId || ""), price: String(product.price), originalPrice: String(product.originalPrice ?? ""), stock: String(product.stock) });
+setImageFile(null);
 
 setImagePreview(product.image || "");
 setFormError("");
@@ -207,16 +183,17 @@ setEditingId(null);
 setForm({ ...EMPTY_PRODUCT });
 setFormError("");
 setImagePreview("");
+setImageFile(null);
 };
 
 const handleInputChange = (event) => {
 const { name, value } = event.target;
-
-
-setForm((previous) => ({
-  ...previous,
-  [name]: value,
-}));
+  if (name === "category") {
+    const selected = categories.find((item) => String(item.id) === String(value));
+    setForm((previous) => ({ ...previous, categoryId: value, category: selected?.name || "" }));
+    return;
+  }
+  setForm((previous) => ({ ...previous, [name]: value }));
 
 
 };
@@ -241,129 +218,83 @@ if (file.size > 5 * 1024 * 1024) {
 
 setFormError("");
 
-const reader = new FileReader();
-
-reader.onloadend = () => {
-  const result = String(reader.result || "");
-  setImagePreview(result);
-
-  setForm((previous) => ({
-    ...previous,
-    image: result,
-  }));
+setImageFile(file);
+setImagePreview(URL.createObjectURL(file));
 };
 
-reader.readAsDataURL(file);
+const handleSaveProduct = async (event) => {
+  event.preventDefault();
+  setFormError("");
+  if (!form.name.trim() || !form.sku.trim() || !form.categoryId || form.price === "" || form.stock === "") {
+    setFormError("Please fill in all required product fields and select a category."); return;
+  }
+  const price = Number(form.price);
+  const originalPrice = form.originalPrice === "" ? null : Number(form.originalPrice);
+  const stock = Number(form.stock);
+  if (!Number.isFinite(price) || (originalPrice !== null && !Number.isFinite(originalPrice)) || !Number.isInteger(stock) || price < 0 || (originalPrice !== null && originalPrice < 0) || stock < 0) {
+    setFormError("Price and stock must be valid non-negative numbers. Stock must be a whole number."); return;
+  }
+  if (originalPrice !== null && originalPrice > 0 && price > originalPrice) {
+    setFormError("Selling price should not exceed the original price."); return;
+  }
+  const duplicateSku = products.some((product) => product.sku.trim().toLowerCase() === form.sku.trim().toLowerCase() && product.id !== editingId);
+  if (duplicateSku) { setFormError("This SKU already exists. Please use a unique SKU."); return; }
+
+  const payload = new FormData();
+  payload.append("name", form.name.trim());
+  payload.append("sku", form.sku.trim());
+  payload.append("category", form.categoryId);
+  payload.append("price", String(price));
+  if (originalPrice !== null) payload.append("original_price", String(originalPrice));
+  payload.append("stock_quantity", String(stock));
+  payload.append("description", form.description.trim());
+  payload.append("is_active", String(Boolean(form.status)));
+  if (imageFile) payload.append("image", imageFile);
+
+  setSaving(true);
+  try {
+    const url = editingId !== null ? `${PRODUCTS_API}${editingId}/` : PRODUCTS_API;
+    const response = await fetch(url, {
+      method: editingId !== null ? "PATCH" : "POST",
+      headers: getAuthHeaders(),
+      body: payload,
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const detail = data.detail || Object.entries(data).map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(", ") : value}`).join(" | ");
+      throw new Error(detail || `Could not save product (${response.status}).`);
+    }
+    await loadData();
+    closeDialog();
+  } catch (error) {
+    setFormError(error.message || "Unable to save product. Please try again.");
+  } finally { setSaving(false); }
 };
 
-const handleSaveProduct = (event) => {
-event.preventDefault();
-setFormError("");
-
-
-if (
-  !form.name.trim() ||
-  !form.sku.trim() ||
-  !form.category ||
-  form.price === "" ||
-  form.originalPrice === "" ||
-  form.stock === ""
-) {
-  setFormError("Please fill in all required product fields.");
-  return;
-}
-
-const price = Number(form.price);
-const originalPrice = Number(form.originalPrice);
-const stock = Number(form.stock);
-
-if (
-  !Number.isFinite(price) ||
-  !Number.isFinite(originalPrice) ||
-  !Number.isInteger(stock) ||
-  price < 0 ||
-  originalPrice < 0 ||
-  stock < 0
-) {
-  setFormError(
-    "Price and stock must be valid non-negative numbers. Stock must be a whole number."
-  );
-  return;
-}
-
-if (price > originalPrice && originalPrice > 0) {
-  setFormError(
-    "Selling price should not exceed the original price."
-  );
-  return;
-}
-
-const duplicateSku = products.some(
-  (product) =>
-    product.sku.trim().toLowerCase() ===
-      form.sku.trim().toLowerCase() &&
-    product.id !== editingId
-);
-
-if (duplicateSku) {
-  setFormError("This SKU already exists. Please use a unique SKU.");
-  return;
-}
-
-const productData = {
-  ...form,
-  name: form.name.trim(),
-  sku: form.sku.trim(),
-  price,
-  originalPrice,
-  stock,
-  description: form.description.trim(),
-  image: form.image || "",
-  status: Boolean(form.status),
+const handleDeleteProduct = async () => {
+  try {
+    const response = await fetch(`${PRODUCTS_API}${deleteId}/`, { method: "DELETE", headers: getAuthHeaders() });
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      throw new Error(data.detail || `Delete failed (${response.status}).`);
+    }
+    setProducts((previous) => previous.filter((product) => product.id !== deleteId));
+    setDeleteId(null);
+    setApiError("");
+  } catch (error) { setApiError(error.message); setDeleteId(null); }
 };
 
-if (editingId !== null) {
-  setProducts((previous) =>
-    previous.map((product) =>
-      product.id === editingId
-        ? { ...productData, id: editingId }
-        : product
-    )
-  );
-} else {
-  setProducts((previous) => [
-    {
-      ...productData,
-      id: Date.now(),
-    },
-    ...previous,
-  ]);
-}
-
-closeDialog();
-
-
-};
-
-const handleDeleteProduct = () => {
-setProducts((previous) =>
-previous.filter((product) => product.id !== deleteId)
-);
-
-
-setDeleteId(null);
-
-
-};
-
-const handleStatusChange = (id) => {
-setProducts((previous) =>
-previous.map((product) =>
-product.id === id
-? { ...product, status: !product.status }
-: product
-)
-);
+const handleStatusChange = async (id) => {
+  const product = products.find((item) => item.id === id);
+  if (!product) return;
+  const payload = new FormData();
+  payload.append("is_active", String(!product.status));
+  try {
+    const response = await fetch(`${PRODUCTS_API}${id}/`, { method: "PATCH", headers: getAuthHeaders(), body: payload });
+    if (!response.ok) throw new Error(`Could not update status (${response.status}).`);
+    const updated = normalizeProduct(await response.json());
+    setProducts((previous) => previous.map((item) => item.id === id ? updated : item));
+  } catch (error) { setApiError(error.message); }
 };
 
 const resetFilters = () => {
@@ -374,6 +305,8 @@ setStatusFilter("All");
 
 return (
 <Box sx={{ width: "100%" }}>
+{apiError && <Paper sx={{ p: 2, mb: 2, border: "1px solid #f0c5c5", color: "#a11", bgcolor: "#fff8f8" }}>{apiError}</Paper>}
+{loading && <Typography sx={{ mb: 2, color: MAROON }}>Loading products from backend...</Typography>}
 {/* PAGE HEADING */}
 <Box
 sx={{
@@ -499,7 +432,7 @@ Product Management </Typography>
             </Typography>
 
             <Typography sx={{ fontSize: 25, fontWeight: 800, color: "#ad761b" }}>
-              {CATEGORIES.length}
+              {categories.length}
             </Typography>
           </Box>
         </CardContent>
@@ -569,20 +502,20 @@ Product Management </Typography>
         }}
       />
 
-      {CATEGORIES.map((category) => (
+      {categories.map((category) => (
         <Chip
-          key={category}
-          label={category}
+          key={category.id}
+          label={category.name}
           clickable
-          onClick={() => setCategoryFilter(category)}
-          variant={categoryFilter === category ? "filled" : "outlined"}
+          onClick={() => setCategoryFilter(category.name)}
+          variant={categoryFilter === category.name ? "filled" : "outlined"}
           sx={{
             fontWeight: 600,
-            bgcolor: categoryFilter === category ? MAROON : "transparent",
-            color: categoryFilter === category ? "#fff" : "#6d6064",
+            bgcolor: categoryFilter === category.name ? MAROON : "transparent",
+            color: categoryFilter === category.name ? "#fff" : "#6d6064",
             borderColor: "#ded2d3",
             "&:hover": {
-              bgcolor: categoryFilter === category ? "#4b0918" : "#faf3f4",
+              bgcolor: categoryFilter === category.name ? "#4b0918" : "#faf3f4",
             },
           }}
         />
@@ -629,9 +562,9 @@ Product Management </Typography>
         >
           <MenuItem value="All">All Categories</MenuItem>
 
-          {CATEGORIES.map((category) => (
-            <MenuItem key={category} value={category}>
-              {category}
+          {categories.map((category) => (
+            <MenuItem key={category.id} value={category.name}>
+              {category.name}
             </MenuItem>
           ))}
         </TextField>
@@ -1032,12 +965,12 @@ Product Management </Typography>
               select
               label="Product Category"
               name="category"
-              value={form.category}
+              value={form.categoryId}
               onChange={handleInputChange}
             >
-              {CATEGORIES.map((category) => (
-                <MenuItem key={category} value={category}>
-                  {category}
+              {categories.map((category) => (
+                <MenuItem key={category.id} value={String(category.id)}>
+                  {category.name}
                 </MenuItem>
               ))}
             </TextField>
@@ -1127,7 +1060,7 @@ Product Management </Typography>
             </Button>
 
             <Typography sx={{ fontSize: 11, color: "#968a8d", mt: 0.8 }}>
-              Select an image up to 5 MB.
+              Select an image up to 5 MB. It will be uploaded to Django media storage.
             </Typography>
 
             {imagePreview && (
@@ -1150,10 +1083,8 @@ Product Management </Typography>
                   color="error"
                   onClick={() => {
                     setImagePreview("");
-                    setForm((previous) => ({
-                      ...previous,
-                      image: "",
-                    }));
+                    setImageFile(null);
+                    setForm((previous) => ({ ...previous, image: "" }));
                   }}
                   sx={{ ml: 1, textTransform: "none" }}
                 >
@@ -1260,6 +1191,7 @@ Product Management </Typography>
 
         <Button
           type="submit"
+          disabled={saving}
           variant="contained"
           sx={{
             bgcolor: MAROON,
@@ -1270,7 +1202,7 @@ Product Management </Typography>
             "&:hover": { bgcolor: "#4b0918" },
           }}
         >
-          {editingId !== null ? "Save Changes" : "Add Product"}
+          {saving ? "Saving..." : editingId !== null ? "Save Changes" : "Add Product"}
         </Button>
       </DialogActions>
     </Box>
@@ -1290,7 +1222,7 @@ Product Management </Typography>
     <DialogContent>
       <Typography sx={{ fontSize: 14, color: "#6c6265" }}>
         Are you sure you want to delete this product? This action will
-        remove it from the current product list.
+        remove it from the database and website.
       </Typography>
     </DialogContent>
 

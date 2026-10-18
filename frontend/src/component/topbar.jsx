@@ -1,5 +1,5 @@
+import React, { useCallback, useEffect, useState } from "react";
 
-import React, { useState } from "react";
 import {
   Box,
   AppBar,
@@ -15,8 +15,9 @@ import {
   ListItemButton,
   ListItemText,
   Divider,
-  ClickAwayListener,
   useMediaQuery,
+  Button,
+  Badge,
 } from "@mui/material";
 
 import { useTheme } from "@mui/material/styles";
@@ -26,20 +27,139 @@ import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import ShoppingBagOutlinedIcon from "@mui/icons-material/ShoppingBagOutlined";
 import PersonIcon from "@mui/icons-material/Person";
-import ChatOutlinedIcon from "@mui/icons-material/ChatOutlined";
 import CloseIcon from "@mui/icons-material/Close";
+
 import { Link, useNavigate } from "react-router-dom";
-import { Button } from "@mui/material";
+
+const API_BASE = "http://127.0.0.1:8000";
+
+const PRODUCT_API = `${API_BASE}/api/products/`;
+
+const readStorage = (key) => {
+  try {
+    const value = JSON.parse(localStorage.getItem(key) || "[]");
+    return Array.isArray(value) ? value : [];
+  } catch {
+    return [];
+  }
+};
+
+const getCartCount = () =>
+  readStorage("zinoraCart").reduce(
+    (total, item) => total + Math.max(0, Number(item.quantity) || 1),
+    0
+  );
+
+const getWishlistCount = () => readStorage("zinoraWishlist").length;
+
+const getProductPath = (product) => {
+  const category = String(
+    product.category_name ||
+      (typeof product.category === "string" ? product.category : "") ||
+      product.category_slug ||
+      ""
+  )
+    .toLowerCase()
+    .replace(/&/g, "and")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+
+  if (product.is_new_arrival) return "/new-arrivals";
+
+  if (category.includes("necklace") || category.includes("choker")) {
+    return "/necklaces";
+  }
+
+  if (category.includes("earring") || category.includes("jhumka")) {
+    return "/earrings";
+  }
+
+  if (category.includes("bangle") || category.includes("kada")) {
+    return "/bangles";
+  }
+
+  if (category.includes("ring") || category.includes("pendant")) {
+    return "/rings";
+  }
+
+  if (category.includes("bridal") || category.includes("festive")) {
+    return "/bridal-festive";
+  }
+
+  return "/search?q=" + encodeURIComponent(product.name || "");
+};
 
 function Topbar() {
   const navigate = useNavigate();
   const theme = useTheme();
+
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
   const [collectionAnchor, setCollectionAnchor] = useState(null);
   const [searchText, setSearchText] = useState("");
   const [showSearch, setShowSearch] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
+
+  const [products, setProducts] = useState([]);
+  const [cartCount, setCartCount] = useState(getCartCount);
+  const [wishlistCount, setWishlistCount] = useState(getWishlistCount);
+
+  // Fetch actual products from Django backend
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchProducts = async () => {
+      try {
+        const response = await fetch(PRODUCT_API);
+
+        if (!response.ok) {
+          throw new Error("Unable to fetch products");
+        }
+
+        const data = await response.json();
+
+        const productList = Array.isArray(data)
+          ? data
+          : data.results || data.products || [];
+
+        if (isMounted) {
+          setProducts(
+            productList.filter((product) => product.is_active !== false)
+          );
+        }
+      } catch (error) {
+        console.error("Topbar product search error:", error);
+      }
+    };
+
+    fetchProducts();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Keep cart and wishlist counts updated
+  const refreshCounts = useCallback(() => {
+    setCartCount(getCartCount());
+    setWishlistCount(getWishlistCount());
+  }, []);
+
+  useEffect(() => {
+    refreshCounts();
+
+    window.addEventListener("storage", refreshCounts);
+    window.addEventListener("focus", refreshCounts);
+    window.addEventListener("zinoraCartUpdated", refreshCounts);
+    window.addEventListener("zinoraWishlistUpdated", refreshCounts);
+
+    return () => {
+      window.removeEventListener("storage", refreshCounts);
+      window.removeEventListener("focus", refreshCounts);
+      window.removeEventListener("zinoraCartUpdated", refreshCounts);
+      window.removeEventListener("zinoraWishlistUpdated", refreshCounts);
+    };
+  }, [refreshCounts]);
 
   const menuItems = [
     { name: "Home", path: "/" },
@@ -49,7 +169,7 @@ function Topbar() {
     { name: "Bangles & Kadas", path: "/bangles" },
     { name: "Rings & Pendants", path: "/rings" },
     { name: "Bridal & Festive", path: "/bridal-festive" },
-    { name: "Under ₹199 / ₹299", path: "/budget" },
+    { name: "Other Products", path: "/OtherProducts" },
     { name: "Offers", path: "/offers" },
   ];
 
@@ -61,59 +181,29 @@ function Topbar() {
     { name: "Rings & Pendants", path: "/rings" },
     { name: "Bridal & Festive", path: "/bridal-festive" },
     { name: "New Arrivals", path: "/new-arrivals" },
-    { name: "Under ₹199 / ₹299", path: "/budget" },
+    { name: "Other Products", path: "/OtherProducts" },
     { name: "Offers", path: "/offers" },
   ];
 
-  // Sample data for search suggestions.
-  // Replace this array with products fetched from your backend/API.
-  const products = [
-    {
-      name: "Kundan Necklace Set",
-      category: "Necklaces & Chokers",
-      path: "/necklaces",
-    },
-    {
-      name: "Gold Plated Choker",
-      category: "Necklaces & Chokers",
-      path: "/necklaces",
-    },
-    {
-      name: "Traditional Jhumka Earrings",
-      category: "Earrings & Jhumkas",
-      path: "/earrings",
-    },
-    {
-      name: "Pearl Earrings",
-      category: "Earrings & Jhumkas",
-      path: "/earrings",
-    },
-    {
-      name: "Gold Plated Bangles",
-      category: "Bangles & Kadas",
-      path: "/bangles",
-    },
-    {
-      name: "Designer Ring",
-      category: "Rings & Pendants",
-      path: "/rings",
-    },
-    {
-      name: "Bridal Jewellery Set",
-      category: "Bridal & Festive",
-      path: "/bridal-festive",
-    },
-  ];
-
+  // Search real backend products
   const filteredProducts = products
     .filter((product) => {
       const query = searchText.trim().toLowerCase();
 
       if (!query) return false;
 
+      const name = String(product.name || "").toLowerCase();
+      const category = String(
+        product.category_name ||
+          (typeof product.category === "string" ? product.category : "")
+      ).toLowerCase();
+
+      const sku = String(product.sku || "").toLowerCase();
+
       return (
-        product.name.toLowerCase().includes(query) ||
-        product.category.toLowerCase().includes(query)
+        name.includes(query) ||
+        category.includes(query) ||
+        sku.includes(query)
       );
     })
     .slice(0, 5);
@@ -139,13 +229,22 @@ function Topbar() {
     navigate(path);
   };
 
-  const handleSuggestionClick = (path) => {
+  const handleSuggestionClick = (product) => {
     setShowSuggestions(false);
     setShowSearch(false);
-    navigate(path);
+
+    navigate(getProductPath(product));
   };
 
-  const renderSearchField = (mobile = false) => (
+  const handleRegisterClick = () => {
+    setCollectionAnchor(null);
+    setShowSuggestions(false);
+    setShowSearch(false);
+
+    navigate("/register");
+  };
+
+  const renderSearchField = () => (
     <Box
       component="form"
       onSubmit={handleSearch}
@@ -233,11 +332,9 @@ function Topbar() {
           {filteredProducts.length > 0 ? (
             <List disablePadding>
               {filteredProducts.map((product, index) => (
-                <React.Fragment key={product.name}>
+                <React.Fragment key={product.id ?? product.sku ?? product.name}>
                   <ListItemButton
-                    onClick={() =>
-                      handleSuggestionClick(product.path)
-                    }
+                    onClick={() => handleSuggestionClick(product)}
                     sx={{ py: 1 }}
                   >
                     <SearchIcon
@@ -250,43 +347,36 @@ function Topbar() {
 
                     <ListItemText
                       primary={product.name}
-                      secondary={product.category}
-                      primaryTypographyProps={{
-                        fontSize: 13,
-                      }}
-                      secondaryTypographyProps={{
-                        fontSize: 11,
-                      }}
+                      secondary={product.category_name || "Jewellery"}
+                      primaryTypographyProps={{ fontSize: 13 }}
+                      secondaryTypographyProps={{ fontSize: 11 }}
                     />
                   </ListItemButton>
 
-                  {index < filteredProducts.length - 1 && (
-                    <Divider />
-                  )}
+                  {index < filteredProducts.length - 1 && <Divider />}
                 </React.Fragment>
               ))}
             </List>
           ) : (
             <Box sx={{ p: 2 }}>
               <Typography fontSize={13} color="text.secondary">
-                No matching sample products found.
+                {products.length === 0
+                  ? "Loading products or backend is unavailable."
+                  : "No matching products found."}
               </Typography>
 
-              <Typography
-                component="button"
+              <Button
                 onClick={handleSearch}
                 sx={{
                   mt: 1,
                   p: 0,
-                  border: 0,
-                  background: "none",
                   color: "#69101d",
-                  cursor: "pointer",
+                  textTransform: "none",
                   fontSize: 13,
                 }}
               >
                 Search for "{searchText}"
-              </Typography>
+              </Button>
             </Box>
           )}
         </Paper>
@@ -305,8 +395,7 @@ function Topbar() {
         zIndex: 1200,
       }}
     >
-      {/* TOP ANNOUNCEMENT */}
-
+      {/* Top Announcement */}
       <Box
         sx={{
           backgroundColor: "#69101d",
@@ -325,8 +414,7 @@ function Topbar() {
         COD AVAILABLE &nbsp; | &nbsp; 48-HOUR EASY EXCHANGE
       </Box>
 
-      {/* MAIN HEADER */}
-
+      {/* Main Header */}
       <Toolbar
         sx={{
           minHeight: "70px !important",
@@ -335,8 +423,7 @@ function Topbar() {
           flexWrap: { xs: "wrap", md: "nowrap" },
         }}
       >
-        {/* LOGO */}
-
+        {/* Logo */}
         <Box
           component={Link}
           to="/"
@@ -362,8 +449,7 @@ function Topbar() {
           </Typography>
         </Box>
 
-        {/* ALL COLLECTIONS */}
-
+        {/* All Collections */}
         <Box sx={{ display: { xs: "none", md: "block" } }}>
           <Box
             onClick={(event) =>
@@ -373,6 +459,12 @@ function Topbar() {
             tabIndex={0}
             aria-label="Open all collections"
             aria-haspopup="true"
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                setCollectionAnchor(event.currentTarget);
+              }
+            }}
             sx={{
               display: "flex",
               alignItems: "center",
@@ -433,8 +525,7 @@ function Topbar() {
           </Menu>
         </Box>
 
-        {/* DESKTOP SEARCH */}
-
+        {/* Desktop Search */}
         <Box
           sx={{
             display: { xs: "none", md: "block" },
@@ -446,8 +537,7 @@ function Topbar() {
           {renderSearchField()}
         </Box>
 
-        {/* RIGHT ICONS */}
-
+        {/* Right Icons */}
         <Box
           sx={{
             marginLeft: { xs: 0, md: "auto" },
@@ -456,8 +546,32 @@ function Topbar() {
             gap: { xs: 0.2, md: 1 },
           }}
         >
-          {/* MOBILE SEARCH ICON */}
+          {/* Register */}
+          <Button
+            variant="contained"
+            onClick={handleRegisterClick}
+            sx={{
+              backgroundColor: "#69101d",
+              color: "#fff",
+              textTransform: "none",
+              fontWeight: 600,
+              fontSize: { xs: "11px", md: "13px" },
+              minWidth: "auto",
+              px: { xs: 1.2, md: 2 },
+              py: 0.8,
+              borderRadius: "4px",
+              whiteSpace: "nowrap",
+              boxShadow: "none",
+              "&:hover": {
+                backgroundColor: "#4f0b15",
+                boxShadow: "none",
+              },
+            }}
+          >
+            Register
+          </Button>
 
+          {/* Mobile Search */}
           {isMobile && (
             <IconButton
               size="small"
@@ -475,55 +589,69 @@ function Topbar() {
             </IconButton>
           )}
 
-          {/* CHAT */}
-
+          {/* Chat & Track */}
           <Button
-  onClick={() => navigate("/chat-track")}
-  sx={{
-    color: "#29211e",
-    textTransform: "none",
-    fontWeight: 600,
-    "&:hover": {
-      color: "#a66b48",
-      backgroundColor: "transparent",
-    },
-  }}
->
-  Chat & Track
-</Button>
+            onClick={() => navigate("/chat-track")}
+            sx={{
+              color: "#29211e",
+              textTransform: "none",
+              fontWeight: 600,
+              fontSize: { xs: "10px", md: "14px" },
+              minWidth: "auto",
+              px: { xs: 0.5, md: 1 },
+              whiteSpace: "nowrap",
+              "&:hover": {
+                color: "#a66b48",
+                backgroundColor: "transparent",
+              },
+            }}
+          >
+            Chat & Track
+          </Button>
 
-          {/* WISHLIST */}
-
+          {/* Wishlist with live count */}
           <IconButton
             size="small"
-            aria-label="Wishlist"
+            aria-label={`Wishlist, ${wishlistCount} items`}
             onClick={() => navigate("/wishlist")}
           >
-            <FavoriteBorderIcon
-              sx={{
-                fontSize: { xs: 22, md: 24 },
-                color: "#5b0b18",
-              }}
-            />
+            <Badge
+              badgeContent={wishlistCount}
+              color="error"
+              max={99}
+              overlap="circular"
+            >
+              <FavoriteBorderIcon
+                sx={{
+                  fontSize: { xs: 20, md: 24 },
+                  color: "#5b0b18",
+                }}
+              />
+            </Badge>
           </IconButton>
 
-          {/* SHOPPING BAG */}
-
+          {/* Cart with live count */}
           <IconButton
             size="small"
-            aria-label="Shopping bag"
+            aria-label={`Shopping bag, ${cartCount} items`}
             onClick={() => navigate("/cart")}
           >
-            <ShoppingBagOutlinedIcon
-              sx={{
-                fontSize: { xs: 22, md: 24 },
-                color: "#5b0b18",
-              }}
-            />
+            <Badge
+              badgeContent={cartCount}
+              color="error"
+              max={99}
+              overlap="circular"
+            >
+              <ShoppingBagOutlinedIcon
+                sx={{
+                  fontSize: { xs: 20, md: 24 },
+                  color: "#5b0b18",
+                }}
+              />
+            </Badge>
           </IconButton>
 
-          {/* PROFILE */}
-
+          {/* Profile */}
           <IconButton
             aria-label="Open Profile"
             title="Profile"
@@ -537,26 +665,35 @@ function Topbar() {
               },
             }}
           >
-            <PersonIcon sx={{ color: "#fff", fontSize: 21 }} />
+            <PersonIcon
+              sx={{ color: "#fff", fontSize: 21 }}
+            />
           </IconButton>
         </Box>
 
-        {/* MOBILE SEARCH FIELD */}
-
+        {/* Mobile Search Field */}
         {isMobile && showSearch && (
-          <Box sx={{ width: "100%", flexBasis: "100%", pb: 1 }}>
-            {renderSearchField(true)}
+          <Box
+            sx={{
+              width: "100%",
+              flexBasis: "100%",
+              pb: 1,
+            }}
+          >
+            {renderSearchField()}
           </Box>
         )}
       </Toolbar>
 
-      {/* NAVIGATION */}
-
+      {/* Navigation */}
       <Box
         sx={{
           display: "flex",
           alignItems: "center",
-          justifyContent: { xs: "flex-start", md: "space-around" },
+          justifyContent: {
+            xs: "flex-start",
+            md: "space-around",
+          },
           minHeight: "48px",
           borderTop: "1px solid #eeeeee",
           backgroundColor: "#fff",

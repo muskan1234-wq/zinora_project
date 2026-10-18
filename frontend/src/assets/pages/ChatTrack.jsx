@@ -8,45 +8,153 @@ import {
   Button,
   Card,
   CardContent,
-  Grid,
   InputAdornment,
   Divider,
-  Chip,
+  Alert,
+  CircularProgress,
 } from "@mui/material";
 
-import ChatOutlinedIcon from "@mui/icons-material/ChatOutlined";
 import LocalShippingOutlinedIcon from "@mui/icons-material/LocalShippingOutlined";
 import SearchIcon from "@mui/icons-material/Search";
-import SupportAgentIcon from "@mui/icons-material/SupportAgent";
 import Inventory2OutlinedIcon from "@mui/icons-material/Inventory2Outlined";
+import ChatOutlinedIcon from "@mui/icons-material/ChatOutlined";
 
 function ChatTrack() {
   const [orderId, setOrderId] = useState("");
-  const [trackingMessage, setTrackingMessage] = useState("");
+  const [tracking, setTracking] = useState(null);
+  const [trackingError, setTrackingError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleTrackOrder = () => {
+  const [chatMessage, setChatMessage] = useState("");
+  const [chatStatus, setChatStatus] = useState("");
+  const [chatLoading, setChatLoading] = useState(false);
+
+  // Django backend API base URL
+  const API_URL = "http://127.0.0.1:8000";
+
+  // Track customer order
+  const handleTrackOrder = async () => {
     if (!orderId.trim()) {
-      setTrackingMessage("Please enter your order ID.");
+      setTrackingError("Please enter your Order ID.");
+      setTracking(null);
       return;
     }
 
-    // Actual order tracking API can be connected here.
-    setTrackingMessage(
-      `Order ID: ${orderId.trim()} — Tracking service will be connected soon.`
-    );
+    setLoading(true);
+    setTracking(null);
+    setTrackingError("");
+
+    try {
+      const token = localStorage.getItem("customerToken");
+
+      const response = await fetch(
+        `${API_URL}/api/orders/track/${encodeURIComponent(
+          orderId.trim()
+        )}/`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+        }
+      );
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(
+          data.detail ||
+            data.message ||
+            "Order not found, or tracking is not available."
+        );
+      }
+
+      setTracking(data);
+    } catch (error) {
+      setTrackingError(
+        error.message ||
+          "Unable to track your order. Please try again later."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Send customer message to admin
+  const handleSendMessage = async () => {
+    if (!orderId.trim()) {
+      setChatStatus("Please enter your Order ID first.");
+      return;
+    }
+
+    if (!chatMessage.trim()) {
+      setChatStatus("Please enter your question.");
+      return;
+    }
+
+    setChatLoading(true);
+    setChatStatus("");
+
+    try {
+      const token = localStorage.getItem("customerToken");
+
+      if (!token) {
+        setChatStatus("Please log in to chat with the admin.");
+        return;
+      }
+
+      const response = await fetch(`${API_URL}/api/chat/messages/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          order_id: orderId.trim(),
+          message: chatMessage.trim(),
+        }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(
+          data.detail ||
+            data.message ||
+            "Unable to send your message. Please try again."
+        );
+      }
+
+      setChatMessage("");
+      setChatStatus("Your message has been sent to the admin successfully.");
+    } catch (error) {
+      setChatStatus(
+        error.message ||
+          "Unable to connect to chat. Please try again later."
+      );
+    } finally {
+      setChatLoading(false);
+    }
   };
 
   return (
-    <Box sx={{ bgcolor: "#fffaf7", minHeight: "100vh", py: 5 }}>
-      <Container maxWidth="lg">
+    <Box
+      sx={{
+        minHeight: "100vh",
+        bgcolor: "#fffaf7",
+        py: { xs: 4, md: 7 },
+      }}
+    >
+      <Container maxWidth="md">
         {/* Page Heading */}
-        <Box textAlign="center" sx={{ mb: 5 }}>
+        <Box sx={{ textAlign: "center", mb: 5 }}>
           <Typography
             sx={{
               color: "#a66b48",
               letterSpacing: 3,
               fontSize: 13,
-              fontWeight: 600,
+              fontWeight: 700,
               mb: 1,
             }}
           >
@@ -62,266 +170,291 @@ function ChatTrack() {
               mb: 1.5,
             }}
           >
-            Chat & Track
+            Track Your Order
           </Typography>
 
           <Typography sx={{ color: "#777", fontSize: 15 }}>
-            We're here to help you with your jewellery shopping journey.
+            Check your order status and get help with your jewellery order.
           </Typography>
         </Box>
 
-        <Grid container spacing={3}>
-          {/* Chat Card */}
-          <Grid item xs={12} md={6}>
-            <Card
-              elevation={0}
-              sx={{
-                height: "100%",
-                border: "1px solid #eadbd2",
-                borderRadius: 3,
-                bgcolor: "#fff",
-              }}
-            >
-              <CardContent sx={{ p: { xs: 3, md: 4 } }}>
-                <Box
-                  sx={{
-                    width: 58,
-                    height: 58,
-                    borderRadius: "50%",
-                    bgcolor: "#f7e8df",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    mb: 2.5,
-                  }}
-                >
-                  <ChatOutlinedIcon
-                    sx={{ fontSize: 30, color: "#a66b48" }}
-                  />
-                </Box>
-
-                <Typography variant="h5" sx={{ fontWeight: 700, mb: 1 }}>
-                  Chat with Us
-                </Typography>
-
-                <Typography sx={{ color: "#777", mb: 3, lineHeight: 1.8 }}>
-                  Need help choosing jewellery or have questions about your
-                  order? Our customer support team is here to help.
-                </Typography>
-
-                <Divider sx={{ mb: 2.5 }} />
-
-                <Box sx={{ display: "flex", gap: 1.5, mb: 3 }}>
-                  <SupportAgentIcon sx={{ color: "#a66b48" }} />
-
-                  <Box>
-                    <Typography sx={{ fontWeight: 600 }}>
-                      Customer Support
-                    </Typography>
-
-                    <Typography variant="body2" sx={{ color: "#888" }}>
-                      Get assistance with your queries.
-                    </Typography>
-                  </Box>
-                </Box>
-
-                <Button
-                  fullWidth
-                  variant="contained"
-                  startIcon={<ChatOutlinedIcon />}
-                  onClick={() =>
-                    window.alert(
-                      "Customer chat will be available after connecting the chat service."
-                    )
-                  }
-                  sx={{
-                    bgcolor: "#a66b48",
-                    py: 1.4,
-                    borderRadius: 2,
-                    textTransform: "none",
-                    fontWeight: 600,
-                    "&:hover": { bgcolor: "#805035" },
-                  }}
-                >
-                  Start a Chat
-                </Button>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          {/* Track Order Card */}
-          <Grid item xs={12} md={6}>
-            <Card
-              elevation={0}
-              sx={{
-                height: "100%",
-                border: "1px solid #eadbd2",
-                borderRadius: 3,
-                bgcolor: "#fff",
-              }}
-            >
-              <CardContent sx={{ p: { xs: 3, md: 4 } }}>
-                <Box
-                  sx={{
-                    width: 58,
-                    height: 58,
-                    borderRadius: "50%",
-                    bgcolor: "#f7e8df",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    mb: 2.5,
-                  }}
-                >
-                  <LocalShippingOutlinedIcon
-                    sx={{ fontSize: 30, color: "#a66b48" }}
-                  />
-                </Box>
-
-                <Typography variant="h5" sx={{ fontWeight: 700, mb: 1 }}>
-                  Track Your Order
-                </Typography>
-
-                <Typography sx={{ color: "#777", mb: 3, lineHeight: 1.8 }}>
-                  Check the latest status of your jewellery order using your
-                  order ID.
-                </Typography>
-
-                <Divider sx={{ mb: 2.5 }} />
-
-                <TextField
-                  fullWidth
-                  label="Enter Order ID"
-                  placeholder="e.g. ZIN10001"
-                  value={orderId}
-                  onChange={(event) => {
-                    setOrderId(event.target.value);
-                    setTrackingMessage("");
-                  }}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") handleTrackOrder();
-                  }}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <Inventory2OutlinedIcon sx={{ color: "#a66b48" }} />
-                      </InputAdornment>
-                    ),
-                  }}
-                  sx={{ mb: 2 }}
-                />
-
-                <Button
-                  fullWidth
-                  variant="contained"
-                  startIcon={<SearchIcon />}
-                  onClick={handleTrackOrder}
-                  sx={{
-                    bgcolor: "#a66b48",
-                    py: 1.4,
-                    borderRadius: 2,
-                    textTransform: "none",
-                    fontWeight: 600,
-                    "&:hover": { bgcolor: "#805035" },
-                  }}
-                >
-                  Track Order
-                </Button>
-
-                {trackingMessage && (
-                  <Box sx={{ mt: 2 }}>
-                    <Typography
-                      role="status"
-                      aria-live="polite"
-                      sx={{ color: "#805035", fontSize: 14 }}
-                    >
-                      {trackingMessage}
-                    </Typography>
-                  </Box>
-                )}
-              </CardContent>
-            </Card>
-          </Grid>
-        </Grid>
-
-        {/* Order Journey */}
-        <Box
+        {/* Order Tracking Card */}
+        <Card
+          elevation={0}
           sx={{
-            mt: 5,
-            p: { xs: 3, md: 4 },
-            bgcolor: "#fff",
             border: "1px solid #eadbd2",
             borderRadius: 3,
+            bgcolor: "#fff",
           }}
         >
-          <Typography
-            variant="h5"
-            sx={{ fontWeight: 700, textAlign: "center", mb: 1 }}
-          >
-            Your Order Journey
-          </Typography>
+          <CardContent sx={{ p: { xs: 3, md: 4 } }}>
+            <Box
+              sx={{
+                width: 60,
+                height: 60,
+                borderRadius: "50%",
+                bgcolor: "#f7e8df",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                mb: 2.5,
+              }}
+            >
+              <LocalShippingOutlinedIcon
+                sx={{ fontSize: 32, color: "#a66b48" }}
+              />
+            </Box>
 
-          <Typography
-            sx={{ color: "#888", textAlign: "center", mb: 4, fontSize: 14 }}
-          >
-            Follow these steps from purchase to delivery.
-          </Typography>
+            <Typography
+              variant="h5"
+              sx={{ fontWeight: 700, color: "#29211e", mb: 1 }}
+            >
+              Where Is My Order?
+            </Typography>
 
-          <Grid container spacing={2}>
-            {[
-              { label: "Order Placed", number: "01" },
-              { label: "Confirmed", number: "02" },
-              { label: "Shipped", number: "03" },
-              { label: "Out for Delivery", number: "04" },
-              { label: "Delivered", number: "05" },
-            ].map((step) => (
-              <Grid item xs={6} sm={4} md={2.4} key={step.number}>
-                <Box sx={{ textAlign: "center", p: 1 }}>
-                  <Box
-                    sx={{
-                      width: 48,
-                      height: 48,
-                      mx: "auto",
-                      mb: 1.5,
-                      borderRadius: "50%",
-                      bgcolor: "#f7e8df",
-                      color: "#a66b48",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontWeight: 700,
-                    }}
-                  >
-                    {step.number}
-                  </Box>
+            <Typography
+              sx={{ color: "#777", mb: 3, lineHeight: 1.8 }}
+            >
+              Enter the Order ID you received after placing your order to
+              check its latest status.
+            </Typography>
 
-                  <Typography sx={{ fontWeight: 600, fontSize: 14 }}>
-                    {step.label}
+            <Divider sx={{ mb: 3 }} />
+
+            <TextField
+              fullWidth
+              label="Order ID"
+              placeholder="e.g. ZIN10001"
+              value={orderId}
+              onChange={(event) => {
+                setOrderId(event.target.value);
+                setTrackingError("");
+                setTracking(null);
+                setChatStatus("");
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  handleTrackOrder();
+                }
+              }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <Inventory2OutlinedIcon sx={{ color: "#a66b48" }} />
+                  </InputAdornment>
+                ),
+              }}
+              sx={{
+                mb: 2,
+                "& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline":
+                  {
+                    borderColor: "#a66b48",
+                  },
+                "& .MuiInputLabel-root.Mui-focused": {
+                  color: "#a66b48",
+                },
+              }}
+            />
+
+            <Button
+              fullWidth
+              variant="contained"
+              startIcon={
+                loading ? (
+                  <CircularProgress size={18} color="inherit" />
+                ) : (
+                  <SearchIcon />
+                )
+              }
+              onClick={handleTrackOrder}
+              disabled={loading}
+              sx={{
+                bgcolor: "#a66b48",
+                py: 1.5,
+                borderRadius: 2,
+                textTransform: "none",
+                fontSize: 16,
+                fontWeight: 600,
+                "&:hover": { bgcolor: "#805035" },
+              }}
+            >
+              {loading ? "Checking Order..." : "Track Order"}
+            </Button>
+
+            {trackingError && (
+              <Alert severity="error" sx={{ mt: 3 }}>
+                {trackingError}
+              </Alert>
+            )}
+
+            {/* Actual order status from backend */}
+            {tracking && (
+              <Box
+                sx={{
+                  mt: 3,
+                  p: 3,
+                  bgcolor: "#fffaf7",
+                  border: "1px solid #eadbd2",
+                  borderRadius: 2,
+                }}
+              >
+                <Typography
+                  sx={{ fontWeight: 700, color: "#29211e", mb: 2 }}
+                >
+                  Order Details
+                </Typography>
+
+                <Typography sx={{ mb: 1, color: "#555" }}>
+                  <strong>Order ID:</strong>{" "}
+                  {tracking.order_id || orderId}
+                </Typography>
+
+                <Typography sx={{ mb: 1, color: "#555" }}>
+                  <strong>Order Status:</strong>{" "}
+                  {tracking.status || tracking.order_status || "Unavailable"}
+                </Typography>
+
+                <Typography sx={{ mb: 1, color: "#555" }}>
+                  <strong>Tracking Number:</strong>{" "}
+                  {tracking.tracking_number || "Not available yet"}
+                </Typography>
+
+                <Typography sx={{ color: "#555" }}>
+                  <strong>Estimated Delivery:</strong>{" "}
+                  {tracking.estimated_delivery || "Not available yet"}
+                </Typography>
+
+                {tracking.current_location && (
+                  <Typography sx={{ mt: 1, color: "#555" }}>
+                    <strong>Current Location:</strong>{" "}
+                    {tracking.current_location}
                   </Typography>
+                )}
+              </Box>
+            )}
+          </CardContent>
+        </Card>
 
-                  <Chip
-                    label="Order stage"
-                    size="small"
-                    sx={{
-                      mt: 1,
-                      bgcolor: "#f8f3ef",
-                      color: "#8b6b59",
-                      fontSize: 10,
-                    }}
-                  />
-                </Box>
-              </Grid>
-            ))}
-          </Grid>
-        </Box>
+        {/* Chat with Admin */}
+        <Card
+          elevation={0}
+          sx={{
+            mt: 4,
+            border: "1px solid #eadbd2",
+            borderRadius: 3,
+            bgcolor: "#fff",
+          }}
+        >
+          <CardContent sx={{ p: { xs: 3, md: 4 } }}>
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 2,
+                mb: 2,
+              }}
+            >
+              <Box
+                sx={{
+                  width: 55,
+                  height: 55,
+                  minWidth: 55,
+                  borderRadius: "50%",
+                  bgcolor: "#f7e8df",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <ChatOutlinedIcon
+                  sx={{ fontSize: 29, color: "#a66b48" }}
+                />
+              </Box>
 
-        {/* Help Section */}
-        <Box sx={{ textAlign: "center", mt: 5 }}>
-          <Typography sx={{ color: "#777", mb: 1 }}>
-            Need more assistance?
-          </Typography>
+              <Box>
+                <Typography
+                  variant="h5"
+                  sx={{ fontWeight: 700, color: "#29211e" }}
+                >
+                  Need Help?
+                </Typography>
 
-          <Typography sx={{ fontWeight: 600, color: "#a66b48" }}>
+                <Typography sx={{ color: "#888", fontSize: 14 }}>
+                  Chat with our admin about your order.
+                </Typography>
+              </Box>
+            </Box>
+
+            <Divider sx={{ mb: 3 }} />
+
+            <Typography sx={{ color: "#666", mb: 2, lineHeight: 1.8 }}>
+              Have a question about delivery, payment, cancellation, or your
+              jewellery order? Send your message to the Zinora admin team.
+            </Typography>
+
+            <TextField
+              fullWidth
+              multiline
+              minRows={3}
+              label="Write your question"
+              placeholder="Hi, I have a question about my order..."
+              value={chatMessage}
+              onChange={(event) => {
+                setChatMessage(event.target.value);
+                setChatStatus("");
+              }}
+              sx={{
+                mb: 2,
+                "& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline":
+                  {
+                    borderColor: "#a66b48",
+                  },
+                "& .MuiInputLabel-root.Mui-focused": {
+                  color: "#a66b48",
+                },
+              }}
+            />
+
+            <Button
+              fullWidth
+              variant="contained"
+              startIcon={
+                chatLoading ? (
+                  <CircularProgress size={18} color="inherit" />
+                ) : (
+                  <ChatOutlinedIcon />
+                )
+              }
+              onClick={handleSendMessage}
+              disabled={chatLoading}
+              sx={{
+                bgcolor: "#a66b48",
+                py: 1.5,
+                borderRadius: 2,
+                textTransform: "none",
+                fontSize: 16,
+                fontWeight: 600,
+                "&:hover": { bgcolor: "#805035" },
+              }}
+            >
+              {chatLoading ? "Sending Message..." : "Chat with Admin"}
+            </Button>
+
+            {chatStatus && (
+              <Alert
+                severity={
+                  chatStatus.includes("successfully") ? "success" : "info"
+                }
+                sx={{ mt: 2 }}
+              >
+                {chatStatus}
+              </Alert>
+            )}
+          </CardContent>
+        </Card>
+
+        <Box sx={{ textAlign: "center", mt: 4 }}>
+          <Typography sx={{ color: "#a66b48", fontWeight: 600 }}>
             Zinora — A special sparkle for every relationship ✨
           </Typography>
         </Box>

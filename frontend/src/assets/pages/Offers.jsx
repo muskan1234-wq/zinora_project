@@ -1,256 +1,209 @@
 
-import React from "react";
+import React, { useEffect, useState } from "react";
+
 import {
   Box,
   Container,
   Typography,
   Button,
   Card,
-  CardMedia,
   CardContent,
   Grid,
   Chip,
   Stack,
+  CircularProgress,
+  Alert,
   Divider,
 } from "@mui/material";
 
 import LocalOfferIcon from "@mui/icons-material/LocalOffer";
-import ShoppingBagOutlinedIcon from "@mui/icons-material/ShoppingBagOutlined";
-import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 
-const products = [
-  {
-    image:
-      "https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&w=700&q=80",
-    tag: "BESTSELLER",
-    discount: "57% OFF",
-    name: "The Jodha Royal Kundan Necklace",
-    price: "₹1,849",
-    oldPrice: "₹4,299",
-  },
-  {
-    image:
-      "https://images.unsplash.com/photo-1611652022419-a9419f74343d?auto=format&fit=crop&w=700&q=80",
-    tag: "HERITAGE",
-    discount: "55% OFF",
-    name: "Padmavati Kemp Ruby Necklace",
-    price: "₹999",
-    oldPrice: "₹2,199",
-  },
-  {
-    image:
-      "https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?auto=format&fit=crop&w=700&q=80",
-    tag: "WATERPROOF",
-    discount: "53% OFF",
-    name: "Noor Dual-Layer Moissanite",
-    price: "₹799",
-    oldPrice: "₹1,699",
-  },
-  {
-    image:
-      "https://images.unsplash.com/photo-1599643477877-530eb83abc8e?auto=format&fit=crop&w=700&q=80",
-    tag: "ROYAL",
-    discount: "51% OFF",
-    name: "Mayuri Peacock Antique Necklace",
-    price: "₹1,699",
-    oldPrice: "₹3,499",
-  },
-  {
-    image:
-      "https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&w=700&q=80",
-    tag: "TRENDING",
-    discount: "56% OFF",
-    name: "Gauri Delicate Pearl Collar",
-    price: "₹349",
-    oldPrice: "₹799",
-  },
-  {
-    image:
-      "https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&w=700&q=80",
-    tag: "DAILY WEAR",
-    discount: "58% OFF",
-    name: "Aanya Micro-Gold Dainty Chain",
-    price: "₹249",
-    oldPrice: "₹599",
-  },
-  {
-    image:
-      "https://images.unsplash.com/photo-1617038260897-41a1f14a8ca0?auto=format&fit=crop&w=700&q=80",
-    tag: "SPECIAL",
-    discount: "50% OFF",
-    name: "Elegant Pearl Drop Earrings",
-    price: "₹599",
-    oldPrice: "₹1,299",
-  },
-  {
-    image:
-      "https://images.unsplash.com/photo-1635767798638-3e25273a8236?auto=format&fit=crop&w=700&q=80",
-    tag: "ROYAL PICK",
-    discount: "54% OFF",
-    name: "Traditional Gold Jhumka",
-    price: "₹899",
-    oldPrice: "₹1,999",
-  },
-];
+// Django backend public offers API
+const API_URL = "http://127.0.0.1:8000/api/offers/";
 
-function ProductCard({ product }) {
-  return (
-    <Card
-      sx={{
-        borderRadius: 2,
-        overflow: "hidden",
-        border: "1px solid #eee",
-        boxShadow: "0 2px 10px rgba(0,0,0,0.06)",
-        height: "100%",
-        position: "relative",
-      }}
-    >
-      <Box sx={{ position: "relative" }}>
-        <CardMedia
-          component="img"
-          height="230"
-          image={product.image}
-          alt={product.name}
-          sx={{ objectFit: "cover" }}
-        />
+// Safely get the first available field from an offer.
+// The aliases allow common backend naming conventions.
+const getField = (offer, names, fallback = "") => {
+  for (const name of names) {
+    if (
+      offer?.[name] !== undefined &&
+      offer?.[name] !== null &&
+      offer?.[name] !== ""
+    ) {
+      return offer[name];
+    }
+  }
 
-        <Chip
-          label={product.tag}
-          size="small"
-          sx={{
-            position: "absolute",
-            top: 10,
-            left: 10,
-            bgcolor: "#6b0f1a",
-            color: "#fff",
-            fontWeight: 700,
-            fontSize: 10,
-          }}
-        />
+  return fallback;
+};
 
-        <Chip
-          label={product.discount}
-          size="small"
-          sx={{
-            position: "absolute",
-            bottom: 10,
-            left: 10,
-            bgcolor: "#c62828",
-            color: "#fff",
-            fontWeight: 700,
-            fontSize: 10,
-          }}
-        />
-
-        <Box
-          sx={{
-            position: "absolute",
-            top: 10,
-            right: 10,
-            bgcolor: "#fff",
-            borderRadius: "50%",
-            width: 32,
-            height: 32,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <FavoriteBorderIcon fontSize="small" />
-        </Box>
-      </Box>
-
-      <CardContent sx={{ p: 1.5 }}>
-        <Typography
-          sx={{
-            fontSize: 13,
-            fontWeight: 700,
-            color: "#4b0d16",
-            mb: 0.7,
-          }}
-        >
-          ★ 4.8
-          <Typography
-            component="span"
-            sx={{ fontSize: 10, color: "#777", ml: 0.5 }}
-          >
-            (96 reviews)
-          </Typography>
-        </Typography>
-
-        <Typography
-          sx={{
-            fontSize: 14,
-            fontWeight: 700,
-            minHeight: 40,
-          }}
-        >
-          {product.name}
-        </Typography>
-
-        <Box sx={{ mt: 1 }}>
-          <Typography
-            component="span"
-            sx={{
-              color: "#8b101f",
-              fontSize: 18,
-              fontWeight: 800,
-            }}
-          >
-            {product.price}
-          </Typography>
-
-          <Typography
-            component="span"
-            sx={{
-              ml: 1,
-              color: "#999",
-              fontSize: 12,
-              textDecoration: "line-through",
-            }}
-          >
-            {product.oldPrice}
-          </Typography>
-        </Box>
-
-        <Button
-          fullWidth
-          variant="contained"
-          startIcon={<ShoppingBagOutlinedIcon />}
-          sx={{
-            mt: 1.5,
-            bgcolor: "#650b17",
-            textTransform: "none",
-            fontSize: 12,
-            "&:hover": {
-              bgcolor: "#4d0710",
-            },
-          }}
-        >
-          Add to Cart
-        </Button>
-      </CardContent>
-    </Card>
+const getOfferTitle = (offer) =>
+  getField(
+    offer,
+    ["title", "name", "offer_name", "offer_title", "coupon_name"],
+    "Exclusive Zinora Offer"
   );
-}
+
+const getOfferDescription = (offer) =>
+  getField(
+    offer,
+    ["description", "offer_description", "details"],
+    "Enjoy exclusive offers on your favourite jewellery."
+  );
+
+const getOfferDiscount = (offer) => {
+  const value = getField(
+    offer,
+    [
+      "discount_percentage",
+      "discount_percent",
+      "discount",
+      "discount_value",
+    ],
+    ""
+  );
+
+  if (value === "") return "";
+
+  const type = String(
+    getField(offer, ["discount_type", "type"], "")
+  ).toLowerCase();
+
+  if (type.includes("percentage") || type.includes("percent")) {
+    return `${value}% OFF`;
+  }
+
+  if (String(value).includes("%")) {
+    return `${value.toUpperCase()} OFF`;
+  }
+
+  // If the backend stores a number without a discount type,
+  // display it as the value supplied by the backend.
+  return typeof value === "number" ? `₹${value} OFF` : value;
+};
+
+const getCouponCode = (offer) =>
+  getField(
+    offer,
+    ["coupon_code", "code", "offer_code", "promo_code"],
+    ""
+  );
+
+const isOfferActive = (offer) => {
+  const status = getField(
+    offer,
+    ["is_active", "isActive", "active", "status"],
+    true
+  );
+
+  if (typeof status === "boolean") return status;
+
+  if (typeof status === "number") return status === 1;
+
+  const normalized = String(status).toLowerCase();
+
+  return !["false", "0", "inactive", "disabled", "expired"].includes(
+    normalized
+  );
+};
+
+const getOfferImage = (offer) =>
+  getField(
+    offer,
+    ["image_url", "image", "banner_image", "imageUrl"],
+    ""
+  );
 
 function Offers() {
-  return (
-    <Box sx={{ bgcolor: "#faf8f4", minHeight: "100vh" }}>
+  const [offers, setOffers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-      {/* OFFER HERO */}
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchOffers = async () => {
+      try {
+        setLoading(true);
+        setError("");
+
+        const response = await fetch(API_URL, {
+          method: "GET",
+          headers: {
+            Accept: "application/json",
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(
+            `Unable to load offers. Server returned ${response.status}.`
+          );
+        }
+
+        const data = await response.json();
+
+        // Support standard Django REST Framework response formats.
+        const list = Array.isArray(data)
+          ? data
+          : Array.isArray(data.results)
+            ? data.results
+            : Array.isArray(data.offers)
+              ? data.offers
+              : [];
+
+        if (!cancelled) {
+          setOffers(list.filter(isOfferActive));
+        }
+      } catch (err) {
+        if (!cancelled) {
+          console.error("Customer Offers API error:", err);
+          setError(
+            "Offers load nahi ho rahe hain. Backend server aur API endpoint check karein."
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchOffers();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const handleCopyCode = async (code) => {
+    try {
+      await navigator.clipboard.writeText(code);
+      alert(`Coupon code ${code} copied!`);
+    } catch {
+      window.prompt("Copy your coupon code:", code);
+    }
+  };
+
+  return (
+    <Box
+      sx={{
+        bgcolor: "#faf8f4",
+        minHeight: "100vh",
+      }}
+    >
+      {/* HERO SECTION */}
       <Box
         sx={{
           bgcolor: "#f4efe7",
-          py: { xs: 4, md: 7 },
+          py: { xs: 5, md: 8 },
           borderBottom: "1px solid #eee",
         }}
       >
         <Container maxWidth="xl">
-          <Grid container spacing={5} alignItems="center">
-
-            <Grid item xs={12} md={6}>
+          <Grid container spacing={4} alignItems="center">
+            <Grid item xs={12} md={7}>
               <Chip
                 icon={<LocalOfferIcon />}
                 label="EXCLUSIVE ROYAL OFFERS"
@@ -265,19 +218,22 @@ function Offers() {
               <Typography
                 sx={{
                   fontFamily: "Georgia, serif",
-                  fontSize: { xs: 35, md: 58 },
-                  lineHeight: 0.95,
+                  fontSize: { xs: 36, md: 58 },
+                  lineHeight: 1.12,
                   fontWeight: 700,
                   color: "#65101b",
                 }}
               >
                 The Royal Treasure
-                <br />
-                <Box component="span" sx={{ color: "#a48225" }}>
-                  Makes Your Sparkle
+                <Box
+                  component="span"
+                  sx={{
+                    display: "block",
+                    color: "#a48225",
+                  }}
+                >
+                  Exclusive Offers
                 </Box>
-                <br />
-                Special
               </Typography>
 
               <Typography
@@ -285,331 +241,317 @@ function Offers() {
                   mt: 2,
                   maxWidth: 600,
                   color: "#666",
-                  lineHeight: 1.7,
+                  lineHeight: 1.8,
                 }}
               >
                 Discover exclusive jewellery offers crafted for every
-                celebration. Enjoy royal designs, timeless craftsmanship and
-                special prices.
+                celebration. Explore our latest deals and enjoy special
+                savings on your favourite styles.
               </Typography>
 
-              <Stack
-                direction={{ xs: "column", sm: "row" }}
-                spacing={2}
-                sx={{ mt: 3 }}
-              >
-                <Button
-                  variant="contained"
-                  endIcon={<ArrowForwardIcon />}
-                  sx={{
-                    bgcolor: "#650b17",
-                    px: 3,
-                    py: 1.4,
-                    textTransform: "none",
-                    fontWeight: 700,
-                  }}
-                >
-                  SHOP ALL OFFERS
-                </Button>
-
-                <Button
-                  variant="outlined"
-                  sx={{
-                    borderColor: "#650b17",
-                    color: "#650b17",
-                    px: 3,
-                    textTransform: "none",
-                  }}
-                >
-                  VIEW COLLECTION
-                </Button>
-              </Stack>
-            </Grid>
-
-            <Grid item xs={12} md={6}>
-              <Box
+              <Button
+                variant="contained"
+                endIcon={<ArrowForwardIcon />}
+                onClick={() =>
+                  document
+                    .getElementById("available-offers")
+                    ?.scrollIntoView({ behavior: "smooth" })
+                }
                 sx={{
-                  borderRadius: 3,
-                  overflow: "hidden",
-                  boxShadow: "0 8px 30px rgba(0,0,0,.15)",
+                  mt: 3,
+                  bgcolor: "#650b17",
+                  px: 3,
+                  py: 1.4,
+                  textTransform: "none",
+                  fontWeight: 700,
+                  "&:hover": {
+                    bgcolor: "#4d0710",
+                  },
                 }}
               >
-                <Box
-                  component="img"
-                  src="https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&w=1000&q=80"
-                  sx={{
-                    width: "100%",
-                    height: { xs: 280, md: 400 },
-                    objectFit: "cover",
-                    display: "block",
-                  }}
-                />
-              </Box>
+                EXPLORE OFFERS
+              </Button>
             </Grid>
 
+            <Grid item xs={12} md={5}>
+              <Box
+                component="img"
+src="https://images.unsplash.com/photo-1607082349566-187342175e2f?auto=format&fit=crop&w=1000&q=80"                alt="Zinora jewellery collection"
+                sx={{
+                  width: "100%",
+                  height: { xs: 260, md: 390 },
+                  objectFit: "cover",
+                  borderRadius: 3,
+                  boxShadow: "0 8px 30px rgba(0,0,0,.15)",
+                }}
+              />
+            </Grid>
           </Grid>
         </Container>
       </Box>
 
-      {/* OFFER CATEGORIES */}
-      <Container maxWidth="xl" sx={{ py: 5 }}>
-        <Typography
-          sx={{
-            fontFamily: "Georgia, serif",
-            fontSize: 28,
-            fontWeight: 700,
-            color: "#650b17",
-            mb: 3,
-          }}
-        >
-          Today's Best Offers
-        </Typography>
+      {/* OFFERS FROM BACKEND */}
+      <Container
+        id="available-offers"
+        maxWidth="xl"
+        sx={{ py: { xs: 4, md: 6 } }}
+      >
+        <Box sx={{ mb: 4 }}>
+          <Typography
+            sx={{
+              color: "#a48225",
+              fontWeight: 700,
+              fontSize: 12,
+              letterSpacing: 2,
+            }}
+          >
+            SPECIAL DEALS FOR YOU
+          </Typography>
 
-        <Grid container spacing={2}>
-          {[
-            ["57% OFF", "Royal Kundan Collection"],
-            ["55% OFF", "Temple Jewellery"],
-            ["53% OFF", "Daily Wear Jewellery"],
-            ["50% OFF", "Bridal Collection"],
-          ].map(([discount, title]) => (
-            <Grid item xs={12} sm={6} md={3} key={title}>
-              <Card
-                sx={{
-                  p: 2.5,
-                  borderRadius: 2,
-                  border: "1px solid #eee",
-                  boxShadow: "none",
-                  bgcolor: "#fff",
-                }}
-              >
-                <Chip
-                  label={discount}
-                  sx={{
-                    bgcolor: "#650b17",
-                    color: "#fff",
-                    fontWeight: 700,
-                    mb: 2,
-                  }}
-                />
+          <Typography
+            sx={{
+              fontFamily: "Georgia, serif",
+              fontSize: { xs: 28, md: 36 },
+              fontWeight: 700,
+              color: "#650b17",
+              mt: 1,
+            }}
+          >
+            Today's Best Offers
+          </Typography>
 
-                <Typography
-                  sx={{
-                    fontWeight: 700,
-                    color: "#65101b",
-                    fontSize: 17,
-                  }}
+          <Typography sx={{ color: "#777", mt: 1 }}>
+            Explore our latest offers and available coupon codes.
+          </Typography>
+        </Box>
+
+        {loading && (
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "center",
+              py: 8,
+            }}
+          >
+            <Stack alignItems="center" spacing={2}>
+              <CircularProgress sx={{ color: "#650b17" }} />
+              <Typography color="text.secondary">
+                Loading exclusive offers...
+              </Typography>
+            </Stack>
+          </Box>
+        )}
+
+        {!loading && error && (
+          <Alert severity="error" sx={{ mb: 3 }}>
+            {error}
+          </Alert>
+        )}
+
+        {!loading && !error && offers.length === 0 && (
+          <Box
+            sx={{
+              textAlign: "center",
+              py: 8,
+              px: 2,
+              bgcolor: "#fff",
+              border: "1px solid #eee",
+              borderRadius: 3,
+            }}
+          >
+            <LocalOfferIcon
+              sx={{ fontSize: 48, color: "#a48225", mb: 1 }}
+            />
+
+            <Typography
+              sx={{
+                color: "#650b17",
+                fontWeight: 700,
+                fontSize: 22,
+              }}
+            >
+              No Active Offers Right Now
+            </Typography>
+
+            <Typography sx={{ color: "#777", mt: 1 }}>
+              Please check back soon for exciting Zinora deals.
+            </Typography>
+          </Box>
+        )}
+
+        {!loading && !error && offers.length > 0 && (
+          <Grid container spacing={3}>
+            {offers.map((offer, index) => {
+              const title = getOfferTitle(offer);
+              const description = getOfferDescription(offer);
+              const discount = getOfferDiscount(offer);
+              const couponCode = getCouponCode(offer);
+              const image = getOfferImage(offer);
+
+              return (
+                <Grid
+                  item
+                  xs={12}
+                  sm={6}
+                  md={4}
+                  lg={3}
+                  key={offer.id ?? offer.pk ?? `${title}-${index}`}
                 >
-                  {title}
-                </Typography>
+                  <Card
+                    sx={{
+                      height: "100%",
+                      display: "flex",
+                      flexDirection: "column",
+                      borderRadius: 3,
+                      overflow: "hidden",
+                      border: "1px solid #eee",
+                      boxShadow: "0 4px 16px rgba(0,0,0,0.05)",
+                      transition: "transform .2s, box-shadow .2s",
+                      "&:hover": {
+                        transform: "translateY(-5px)",
+                        boxShadow: "0 10px 28px rgba(0,0,0,0.12)",
+                      },
+                    }}
+                  >
+                    {image ? (
+                      <Box
+                        component="img"
+                        src={image}
+                        alt={title}
+                        onError={(event) => {
+                          event.currentTarget.style.display = "none";
+                        }}
+                        sx={{
+                          width: "100%",
+                          height: 190,
+                          objectFit: "cover",
+                          bgcolor: "#f4efe7",
+                        }}
+                      />
+                    ) : (
+                      <Box
+                        sx={{
+                          height: 120,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          bgcolor: "#f4efe7",
+                        }}
+                      >
+                        <LocalOfferIcon
+                          sx={{ fontSize: 50, color: "#a48225" }}
+                        />
+                      </Box>
+                    )}
 
-                <Typography
-                  sx={{
-                    color: "#777",
-                    fontSize: 13,
-                    mt: 1,
-                  }}
-                >
-                  Explore exclusive designs at special prices.
-                </Typography>
+                    <CardContent
+                      sx={{
+                        p: 2.5,
+                        display: "flex",
+                        flexDirection: "column",
+                        flexGrow: 1,
+                      }}
+                    >
+                      {discount && (
+                        <Chip
+                          label={discount}
+                          size="small"
+                          sx={{
+                            alignSelf: "flex-start",
+                            bgcolor: "#650b17",
+                            color: "#fff",
+                            fontWeight: 700,
+                            mb: 1.5,
+                          }}
+                        />
+                      )}
 
-                <Button
-                  sx={{
-                    mt: 2,
-                    color: "#650b17",
-                    textTransform: "none",
-                    fontWeight: 700,
-                  }}
-                  endIcon={<ArrowForwardIcon />}
-                >
-                  Shop Now
-                </Button>
-              </Card>
-            </Grid>
-          ))}
-        </Grid>
+                      <Typography
+                        sx={{
+                          color: "#650b17",
+                          fontWeight: 700,
+                          fontSize: 18,
+                          mb: 1,
+                        }}
+                      >
+                        {title}
+                      </Typography>
+
+                      <Typography
+                        sx={{
+                          color: "#777",
+                          fontSize: 13,
+                          lineHeight: 1.7,
+                          flexGrow: 1,
+                          whiteSpace: "pre-line",
+                        }}
+                      >
+                        {description}
+                      </Typography>
+
+                      {couponCode && (
+                        <Box
+                          sx={{
+                            mt: 2,
+                            p: 1.5,
+                            bgcolor: "#faf8f4",
+                            border: "1px dashed #c5a059",
+                            borderRadius: 2,
+                          }}
+                        >
+                          <Typography
+                            sx={{
+                              fontSize: 11,
+                              color: "#777",
+                              mb: 0.5,
+                            }}
+                          >
+                            COUPON CODE
+                          </Typography>
+
+                          <Stack
+                            direction="row"
+                            alignItems="center"
+                            justifyContent="space-between"
+                            spacing={1}
+                          >
+                            <Typography
+                              sx={{
+                                color: "#650b17",
+                                fontWeight: 800,
+                                overflowWrap: "anywhere",
+                              }}
+                            >
+                              {couponCode}
+                            </Typography>
+
+                            <Button
+                              size="small"
+                              onClick={() => handleCopyCode(couponCode)}
+                              startIcon={<ContentCopyIcon />}
+                              sx={{
+                                color: "#650b17",
+                                textTransform: "none",
+                                minWidth: "auto",
+                              }}
+                            >
+                              Copy
+                            </Button>
+                          </Stack>
+                        </Box>
+                      )}
+                    </CardContent>
+                  </Card>
+                </Grid>
+              );
+            })}
+          </Grid>
+        )}
       </Container>
 
       <Divider />
 
-      {/* PRODUCT SECTION */}
-      <Container maxWidth="xl" sx={{ py: 5 }}>
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            mb: 3,
-            flexWrap: "wrap",
-            gap: 2,
-          }}
-        >
-          <Box>
-            <Typography
-              sx={{
-                fontSize: 13,
-                color: "#a48225",
-                fontWeight: 700,
-              }}
-            >
-              LIMITED TIME COLLECTION
-            </Typography>
-
-            <Typography
-              sx={{
-                fontFamily: "Georgia, serif",
-                fontSize: 30,
-                fontWeight: 700,
-                color: "#650b17",
-              }}
-            >
-              Shop Exclusive Offers
-            </Typography>
-          </Box>
-
-          <Button
-            variant="outlined"
-            sx={{
-              borderColor: "#650b17",
-              color: "#650b17",
-              textTransform: "none",
-            }}
-          >
-            View All Offers
-          </Button>
-        </Box>
-
-        <Grid container spacing={2.5}>
-          {products.map((product) => (
-            <Grid item xs={12} sm={6} md={3} key={product.name}>
-              <ProductCard product={product} />
-            </Grid>
-          ))}
-        </Grid>
-      </Container>
-
-      {/* TRUST SECTION */}
-      <Box sx={{ bgcolor: "#fff", py: 5 }}>
-        <Container maxWidth="xl">
-          <Grid container spacing={3}>
-            {[
-              ["100% Skin Safe Brass", "Nickel-free and hypoallergenic"],
-              ["1-Year Polish Warranty", "Guaranteed long-lasting shine"],
-              ["Handcrafted Jewellery", "Made by skilled Indian artisans"],
-            ].map(([title, text]) => (
-              <Grid item xs={12} md={4} key={title}>
-                <Box
-                  sx={{
-                    textAlign: "center",
-                    p: 3,
-                    border: "1px solid #eee",
-                    borderRadius: 2,
-                  }}
-                >
-                  <Typography
-                    sx={{
-                      color: "#650b17",
-                      fontSize: 20,
-                      fontWeight: 800,
-                    }}
-                  >
-                    ✦
-                  </Typography>
-
-                  <Typography
-                    sx={{
-                      color: "#650b17",
-                      fontWeight: 700,
-                      mt: 1,
-                    }}
-                  >
-                    {title}
-                  </Typography>
-
-                  <Typography
-                    sx={{
-                      color: "#777",
-                      fontSize: 12,
-                      mt: 1,
-                    }}
-                  >
-                    {text}
-                  </Typography>
-                </Box>
-              </Grid>
-            ))}
-          </Grid>
-        </Container>
-      </Box>
-
-      {/* FOOTER CTA */}
-      <Box
-        sx={{
-          bgcolor: "#f3f0eb",
-          py: 5,
-        }}
-      >
-        <Container maxWidth="xl">
-          <Grid container spacing={4} alignItems="center">
-            <Grid item xs={12} md={7}>
-              <Typography
-                sx={{
-                  fontSize: 12,
-                  color: "#a48225",
-                  fontWeight: 700,
-                }}
-              >
-                EXCLUSIVE ROYAL PRIVILEGES
-              </Typography>
-
-              <Typography
-                sx={{
-                  fontFamily: "Georgia, serif",
-                  fontSize: 28,
-                  color: "#650b17",
-                  fontWeight: 700,
-                }}
-              >
-                Join the Zinora Atelier
-              </Typography>
-
-              <Typography sx={{ color: "#777", mt: 1 }}>
-                Sign up to receive private collection previews and exclusive
-                offers.
-              </Typography>
-            </Grid>
-
-            <Grid item xs={12} md={5}>
-              <Stack direction="row">
-                <Box
-                  component="input"
-                  placeholder="Enter your mobile number or email"
-                  sx={{
-                    flex: 1,
-                    border: "1px solid #ddd",
-                    outline: "none",
-                    px: 2,
-                    py: 1.5,
-                    bgcolor: "#fff",
-                  }}
-                />
-
-                <Button
-                  variant="contained"
-                  sx={{
-                    bgcolor: "#650b17",
-                    borderRadius: 0,
-                    textTransform: "none",
-                    fontWeight: 700,
-                  }}
-                >
-                  CLAIM 15% OFF
-                </Button>
-              </Stack>
-            </Grid>
-          </Grid>
-        </Container>
-      </Box>
-
+     
     </Box>
   );
 }
