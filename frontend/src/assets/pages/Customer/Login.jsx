@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
 import {
 Box,
@@ -10,6 +10,7 @@ Alert,
 InputAdornment,
 IconButton,
 CircularProgress,
+Divider,
 } from "@mui/material";
 
 import EmailOutlinedIcon from "@mui/icons-material/EmailOutlined";
@@ -21,17 +22,21 @@ const LOGIN_API = "http://127.0.0.1:8000/api/accounts/login/";
 
 const Login = () => {
 const navigate = useNavigate();
+const location = useLocation();
 
-const [email, setEmail] = useState("");
+const [email, setEmail] = useState(location.state?.email || "");
 const [password, setPassword] = useState("");
 const [showPassword, setShowPassword] = useState(false);
 const [error, setError] = useState("");
+const [success, setSuccess] = useState(location.state?.message || "");
 const [loading, setLoading] = useState(false);
 
 const handleLogin = async (event) => {
 event.preventDefault();
-setError("");
 
+
+setError("");
+setSuccess("");
 
 const identifier = email.trim();
 
@@ -40,13 +45,14 @@ if (!identifier || !password) {
   return;
 }
 
-try {
-  setLoading(true);
+setLoading(true);
 
+try {
   const response = await fetch(LOGIN_API, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      Accept: "application/json",
     },
     body: JSON.stringify({
       username: identifier,
@@ -54,7 +60,15 @@ try {
     }),
   });
 
-  const data = await response.json();
+  const responseText = await response.text();
+
+  let data = {};
+
+  try {
+    data = responseText ? JSON.parse(responseText) : {};
+  } catch {
+    data = { detail: responseText };
+  }
 
   if (!response.ok) {
     setError(
@@ -66,40 +80,62 @@ try {
     return;
   }
 
-  const role = String(data.role || "").toUpperCase();
+  const role = String(data.role || "").trim().toUpperCase();
   const token = data.token;
   const username = data.username || identifier;
 
-  // Verify that the backend returned a valid token.
+  // A valid authentication token must be returned by Django.
   if (!token) {
     setError(
-      "Authentication token is missing. Please check the Django login API."
+      "Authentication token is missing. Please check the Django login API response."
     );
     return;
   }
 
-  // This page is intended for administrator login only.
-  if (role !== "ADMIN") {
+  // Accept only supported account roles returned by the backend.
+  if (role !== "ADMIN" && role !== "CUSTOMER") {
     setError(
-      "Admin access denied. Please use an authorized administrator account."
+      "Your account role could not be verified. Please contact the administrator."
     );
     return;
   }
 
-  // Save the keys required by the admin dashboard and Categories page.
-  localStorage.setItem("zinoraAdminToken", token);
-  localStorage.setItem("zinoraAdminRole", role);
-  localStorage.setItem("zinoraAdminUsername", username);
+  // ADMIN LOGIN
+  if (role === "ADMIN") {
+    localStorage.setItem("zinoraAdminToken", token);
+    localStorage.setItem("zinoraAdminRole", role);
+    localStorage.setItem("zinoraAdminUsername", username);
 
-  // Preserve the existing application authentication keys.
+    // Also maintain the application's common authentication keys.
+    localStorage.setItem("zinoraToken", token);
+    localStorage.setItem("zinoraRole", role);
+    localStorage.setItem("zinoraUsername", username);
+
+    // Clear any previous customer session.
+    localStorage.removeItem("zinoraCustomerToken");
+
+    navigate("/admin/dashboard", { replace: true });
+    return;
+  }
+
+  // CUSTOMER LOGIN
   localStorage.setItem("zinoraToken", token);
   localStorage.setItem("zinoraRole", role);
   localStorage.setItem("zinoraUsername", username);
 
-  // Open the admin dashboard after successful authentication.
-  navigate("/admin/dashboard", { replace: true });
+  // Save customer-specific authentication keys as well.
+  localStorage.setItem("zinoraCustomerToken", token);
+  localStorage.setItem("zinoraCustomerUsername", username);
+
+  // Clear any previous administrator session.
+  localStorage.removeItem("zinoraAdminToken");
+  localStorage.removeItem("zinoraAdminRole");
+  localStorage.removeItem("zinoraAdminUsername");
+
+  // Customer goes to the main Zinora shopping website.
+  navigate("/", { replace: true });
 } catch (err) {
-  console.error("Admin login error:", err);
+  console.error("Login API error:", err);
 
   setError(
     "Unable to connect to the server. Please make sure Django is running."
@@ -180,8 +216,8 @@ WELCOME TO ZINORA </Typography>
           fontSize: 14,
         }}
       >
-        Discover elegant jewellery, explore exclusive collections,
-        and experience the beauty of ZINORA.
+        Discover elegant jewellery, explore exclusive collections, and
+        experience the beauty of ZINORA.
       </Typography>
 
       <Box
@@ -192,9 +228,24 @@ WELCOME TO ZINORA </Typography>
           mt: 4,
         }}
       />
+
+      <Typography
+        sx={{
+          color: "#e4d6d6",
+          fontSize: 13,
+          lineHeight: 1.9,
+          mt: 3,
+        }}
+      >
+        ✨ Explore exclusive collections.
+        <br />
+        ✨ Discover your favourite jewellery.
+        <br />
+        ✨ Enjoy your shopping experience.
+      </Typography>
     </Box>
 
-    {/* RIGHT SIDE - ADMIN LOGIN */}
+    {/* RIGHT SIDE — CUSTOMER AND ADMIN LOGIN */}
     <Box
       sx={{
         width: { xs: "100%", md: "58%" },
@@ -213,7 +264,7 @@ WELCOME TO ZINORA </Typography>
           mb: 2,
         }}
       >
-        SECURE ADMIN ACCESS
+        SECURE ACCOUNT ACCESS
       </Typography>
 
       <Typography
@@ -223,9 +274,10 @@ WELCOME TO ZINORA </Typography>
           color: "#52000d",
           mb: 1,
           fontSize: { xs: 28, md: 34 },
+          fontWeight: 700,
         }}
       >
-        Admin Login
+        Sign In
       </Typography>
 
       <Typography
@@ -236,12 +288,18 @@ WELCOME TO ZINORA </Typography>
           lineHeight: 1.7,
         }}
       >
-        Enter your registered email or username and password to access
-        the ZINORA administration dashboard.
+        Sign in to your ZINORA account to continue shopping. Administrators
+        will be redirected to the admin dashboard.
       </Typography>
 
+      {success && (
+        <Alert severity="success" sx={{ mb: 3 }}>
+          {success}
+        </Alert>
+      )}
+
       {error && (
-        <Alert severity="error" sx={{ mb: 3 }}>
+        <Alert severity="error" sx={{ mb: 3, whiteSpace: "pre-line" }}>
           {error}
         </Alert>
       )}
@@ -379,6 +437,36 @@ WELCOME TO ZINORA </Typography>
         </Button>
       </Box>
 
+      <Divider sx={{ my: 3 }} />
+
+      {/* REGISTRATION LINK FOR NEW CUSTOMERS */}
+      <Typography
+        sx={{
+          textAlign: "center",
+          fontSize: 14,
+          color: "#777",
+        }}
+      >
+        New to ZINORA?{" "}
+        <Button
+          variant="text"
+          onClick={() => navigate("/register")}
+          disabled={loading}
+          sx={{
+            color: "#800020",
+            fontWeight: 700,
+            textTransform: "none",
+            minWidth: "auto",
+            "&:hover": {
+              backgroundColor: "rgba(128,0,32,0.06)",
+              textDecoration: "underline",
+            },
+          }}
+        >
+          Create Account
+        </Button>
+      </Typography>
+
       <Typography
         sx={{
           textAlign: "center",
@@ -388,7 +476,7 @@ WELCOME TO ZINORA </Typography>
           lineHeight: 1.8,
         }}
       >
-        Authorized administrators only.
+        Your account access is determined by your verified account role.
       </Typography>
     </Box>
   </Box>
