@@ -369,7 +369,7 @@ backgroundColor: "#f7f5f2",
       <Button
         variant="outlined"
         startIcon={<OpenInNewIcon />}
-        onClick={() => window.open("/", "_blank", "noopener,noreferrer")}
+        onClick={() => window.open("/home", "_blank", "noopener,noreferrer")}
         sx={{
           flexShrink: 0,
           textTransform: "none",
