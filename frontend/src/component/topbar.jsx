@@ -236,13 +236,7 @@ function Topbar() {
     navigate(getProductPath(product));
   };
 
-  const handleRegisterClick = () => {
-    setCollectionAnchor(null);
-    setShowSuggestions(false);
-    setShowSearch(false);
-
-    navigate("/register");
-  };
+  
 
   const renderSearchField = () => (
     <Box
@@ -546,30 +540,7 @@ function Topbar() {
             gap: { xs: 0.2, md: 1 },
           }}
         >
-          {/* Register */}
-          <Button
-            variant="contained"
-            onClick={handleRegisterClick}
-            sx={{
-              backgroundColor: "#69101d",
-              color: "#fff",
-              textTransform: "none",
-              fontWeight: 600,
-              fontSize: { xs: "11px", md: "13px" },
-              minWidth: "auto",
-              px: { xs: 1.2, md: 2 },
-              py: 0.8,
-              borderRadius: "4px",
-              whiteSpace: "nowrap",
-              boxShadow: "none",
-              "&:hover": {
-                backgroundColor: "#4f0b15",
-                boxShadow: "none",
-              },
-            }}
-          >
-            Register
-          </Button>
+          
 
           {/* Mobile Search */}
           {isMobile && (
