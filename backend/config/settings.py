@@ -79,7 +79,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'zinora_db',
         'USER': 'root',
-        'PASSWORD': 'Muskan@2004',  # MySQL password hai toh yahan likho
+        'PASSWORD': 'Maddi@1234',  # MySQL password hai toh yahan likho
         'HOST': 'localhost',
         'PORT': '3306',
     }
