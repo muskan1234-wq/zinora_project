@@ -1,6 +1,6 @@
 
 from django.urls import path
-
+from products.views import CustomerChatMessageAPIView
 from .views import (
     RegisterView,
     LoginView,
@@ -10,6 +10,11 @@ from .views import (
     AdminProfileView,
     AdminChangePasswordView,
 )
+from .views import CustomerProfileView
+from products.views import (
+    CustomerAddressAPIView,
+    CustomerOrdersAPIView,
+)
 
 urlpatterns = [
     # Customer registration
@@ -18,7 +23,33 @@ urlpatterns = [
         RegisterView.as_view(),
         name="register",
     ),
+    path(
+    "addresses/",
+    CustomerAddressAPIView.as_view(),
+    name="account-addresses",
+),
+path(
+    "chat/messages/",
+    CustomerChatMessageAPIView.as_view(),
+    name="customer-chat-messages",
+),
 
+path(
+    "addresses/<int:pk>/",
+    CustomerAddressAPIView.as_view(),
+    name="account-address-detail",
+),
+
+path(
+    "customer/orders/",
+    CustomerOrdersAPIView.as_view(),
+    name="account-customer-orders",
+),
+path(
+    "customer-profile/",
+    CustomerProfileView.as_view(),
+    name="customer-profile",
+),
     # Login
     path(
         "login/",

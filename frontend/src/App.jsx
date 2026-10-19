@@ -20,9 +20,14 @@ import Profile from "./assets/pages/Profile";
 import ChatTrack from "./assets/pages/ChatTrack";
 import Cart from "./assets/pages/Cart";
 
+
+
+import Checkout from "./assets/pages/Checkout";
+import OrderSuccess from "./assets/pages/OrderSuccess";
 // Authentication Pages
 import Register from "./assets/pages/Admin/Register";
 import Login from "./assets/pages/Customer/Login";
+import Notifications from "./assets/pages/Admin/Notifications";
 
 // Admin Pages
 import AdminDashboard from "./assets/pages/Admin/AdminDashboard";
@@ -67,12 +72,14 @@ function App() {
         {/* Customer Authentication */}
         <Route path="/register" element={<Register />} />
         <Route path="/login" element={<Login />} />
-
+<Route path="/checkout" element={<Checkout />} />
+<Route path="/order-success" element={<OrderSuccess />} />
         {/* Admin Login */}
         <Route path="/admin/login" element={<Login />} />
+      
 
         {/* Customer Website Pages */}
-        <Route path="/home" element={<Home />} />
+        <Route path="/" element={<Home />} />
         <Route path="/new-arrivals" element={<NewArrivals />} />
         <Route path="/necklaces" element={<Necklaces />} />
         <Route path="/earrings" element={<Earrings />} />
@@ -101,6 +108,7 @@ function App() {
           <Route path="offers" element={<AdminOffers />} />
           <Route path="inventory" element={<Inventory />} />
           <Route path="settings" element={<Settings />} />
+          <Route path="notifications" element={<Notifications />} />
         </Route>
 
         {/* Old Admin Dashboard URL Redirect */}

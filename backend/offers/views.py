@@ -12,6 +12,11 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 
 from .models import Offer
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.authentication import TokenAuthentication
 
 
 def serialize_offer(offer, request=None):
@@ -441,3 +446,69 @@ class AdminOfferDetailView(APIView):
         offer.delete()
 
         return Response(status=status.HTTP_204_NO_CONTENT)
+class CustomerProfileView(APIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+
+        return Response({
+            "id": user.id,
+            "username": user.username,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "name": f"{user.first_name} {user.last_name}".strip(),
+            "email": user.email,
+            "phone": user.phone or "",
+            "address": user.address or "",
+        })
+
+    def patch(self, request):
+        user = request.user
+        data = request.data
+
+        allowed_fields = [
+            "first_name",
+            "last_name",
+            "email",
+            "phone",
+            "address",
+        ]
+
+        for field in allowed_fields:
+            if field in data:
+                value = data[field]
+
+                if value is None:
+                    value = ""
+
+                value = str(value).strip()
+
+                if field == "email" and value:
+                    from django.core.validators import validate_email
+                    from django.core.exceptions import ValidationError
+
+                    try:
+                        validate_email(value)
+                    except ValidationError:
+                        return Response(
+                            {"error": "Please enter a valid email address."},
+                            status=status.HTTP_400_BAD_REQUEST,
+                        )
+
+                setattr(user, field, value)
+
+        user.save()
+
+        return Response({
+            "message": "Profile updated successfully.",
+            "id": user.id,
+            "username": user.username,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "name": f"{user.first_name} {user.last_name}".strip(),
+            "email": user.email,
+            "phone": user.phone or "",
+            "address": user.address or "",
+        })

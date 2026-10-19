@@ -1,903 +1,767 @@
-
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-
 import {
-  Alert,
-  Box,
-  Button,
-  Card,
-  CardContent,
-  Chip,
-  CircularProgress,
-  Divider,
-  FormControl,
-  InputAdornment,
-  MenuItem,
-  Paper,
-  Select,
-  Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  TextField,
-  Typography,
+Alert,
+Box,
+Button,
+Card,
+CardContent,
+Chip,
+CircularProgress,
+Divider,
+FormControl,
+InputAdornment,
+MenuItem,
+Paper,
+Select,
+Stack,
+Table,
+TableBody,
+TableCell,
+TableContainer,
+TableHead,
+TableRow,
+TextField,
+Typography,
 } from "@mui/material";
 
 import SearchIcon from "@mui/icons-material/Search";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
-import LocalShippingIcon from "@mui/icons-material/LocalShipping";
 import PendingActionsIcon from "@mui/icons-material/PendingActions";
+import LocalShippingIcon from "@mui/icons-material/LocalShipping";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import LocationOnIcon from "@mui/icons-material/LocationOn";
 
-// Change this URL if your Django orders endpoint is different.
 const API_URL = "http://127.0.0.1:8000/api/orders/admin/";
 
 const COLORS = {
-  maroon: "#650c20",
-  gold: "#c5a059",
-  background: "#f7f5f2",
-  border: "#e7e0dc",
-  muted: "#777777",
+maroon: "#650c20",
+gold: "#c5a059",
+background: "#f7f5f2",
+border: "#e7e0dc",
+muted: "#777777",
 };
 
 const ORDER_STATUSES = [
-  "Pending",
-  "Confirmed",
-  "Processing",
-  "Shipped",
-  "Delivered",
-  "Cancelled",
+{ value: "PLACED", label: "Placed" },
+{ value: "CONFIRMED", label: "Confirmed" },
+{ value: "PACKED", label: "Packed" },
+{ value: "SHIPPED", label: "Shipped" },
+{ value: "DELIVERED", label: "Delivered" },
+{ value: "CANCELLED", label: "Cancelled" },
+{ value: "RETURNED", label: "Returned" },
 ];
 
 const normalizeStatus = (status) => {
-  const value = String(status || "Pending").trim().toLowerCase();
+const value = String(status || "PLACED").toUpperCase();
 
-  const statusMap = {
-    pending: "Pending",
-    confirmed: "Confirmed",
-    processing: "Processing",
-    shipped: "Shipped",
-    delivered: "Delivered",
-    cancelled: "Cancelled",
-    canceled: "Cancelled",
-  };
+const legacyMap = {
+PENDING: "PLACED",
+PROCESSING: "PACKED",
+};
 
-  return statusMap[value] || "Pending";
+return legacyMap[value] || value;
+};
+
+const getStatusLabel = (status) => {
+const normalized = normalizeStatus(status);
+
+return (
+ORDER_STATUSES.find((item) => item.value === normalized)?.label ||
+normalized
+);
 };
 
 const getStatusColor = (status) => {
-  switch (normalizeStatus(status)) {
-    case "Delivered":
-      return "success";
-    case "Processing":
-      return "info";
-    case "Shipped":
-      return "primary";
-    case "Confirmed":
-      return "secondary";
-    case "Cancelled":
-      return "error";
-    default:
-      return "warning";
-  }
+switch (normalizeStatus(status)) {
+case "DELIVERED":
+return "success";
+case "SHIPPED":
+return "info";
+case "CONFIRMED":
+return "secondary";
+case "PACKED":
+return "primary";
+case "CANCELLED":
+case "RETURNED":
+return "error";
+default:
+return "warning";
+}
 };
 
-const formatCurrency = (amount) => {
-  const value = Number(amount);
+const formatCurrency = (amount) =>
+Number(amount || 0).toLocaleString("en-IN", {
+style: "currency",
+currency: "INR",
+minimumFractionDigits: 2,
+maximumFractionDigits: 2,
+});
 
-  if (!Number.isFinite(value)) {
-    return "₹0.00";
-  }
+const formatDate = (value) => {
+if (!value) return "—";
 
-  return value.toLocaleString("en-IN", {
-    style: "currency",
-    currency: "INR",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-};
+const date = new Date(value);
 
-const formatDate = (dateValue) => {
-  if (!dateValue) {
-    return "—";
-  }
+if (Number.isNaN(date.getTime())) return "—";
 
-  const date = new Date(dateValue);
-
-  if (Number.isNaN(date.getTime())) {
-    return String(dateValue);
-  }
-
-  return date.toLocaleDateString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-};
-
-const getOrderId = (order) => {
-  return (
-    order.order_number ||
-    order.order_id ||
-    order.id ||
-    "—"
-  );
+return date.toLocaleString("en-IN", {
+day: "2-digit",
+month: "short",
+year: "numeric",
+hour: "2-digit",
+minute: "2-digit",
+});
 };
 
 const getCustomerName = (order) => {
-  if (order.customer_name) {
-    return order.customer_name;
-  }
+const customer = order.customer;
 
-  if (order.customer && typeof order.customer === "object") {
-    const customer = order.customer;
+if (order.customer_name) return order.customer_name;
 
-    return (
-      customer.name ||
-      [customer.first_name, customer.last_name]
-        .filter(Boolean)
-        .join(" ") ||
-      customer.username ||
-      customer.email ||
-      "Customer"
-    );
-  }
+if (customer && typeof customer === "object") {
+return (
+customer.full_name ||
+customer.name ||
+[customer.first_name, customer.last_name].filter(Boolean).join(" ") ||
+customer.username ||
+customer.email ||
+"Customer"
+);
+}
 
-  return order.customer || "Customer";
+return order.customer_username || "Customer";
 };
 
-const getOrderAmount = (order) => {
-  return (
-    order.total_amount ??
-    order.total_price ??
-    order.grand_total ??
-    order.amount ??
-    0
-  );
+const getCustomerEmail = (order) =>
+order.customer_email ||
+(typeof order.customer === "object" ? order.customer?.email : "") ||
+"";
+
+const getCustomerPhone = (order) => {
+const customer = order.customer;
+
+return (
+order.customer_phone ||
+order.address?.phone ||
+(typeof customer === "object" ? customer?.phone : "") ||
+""
+);
 };
 
-const getPaymentStatus = (order) => {
-  return (
-    order.payment_status ||
-    order.payment?.status ||
-    "Pending"
-  );
+const getAddressText = (order) => {
+const address = order.address;
+
+if (!address || typeof address !== "object") {
+return typeof address === "string" ? address : "Address unavailable";
+}
+
+return [
+address.full_name,
+address.phone,
+address.address_line1,
+address.address_line2,
+address.landmark,
+address.city,
+address.state,
+address.postal_code || address.pincode,
+address.country,
+]
+.filter(Boolean)
+.join(", ");
 };
 
-const getOrderDate = (order) => {
-  return (
-    order.created_at ||
-    order.order_date ||
-    order.created ||
-    order.date ||
-    null
-  );
+const getOrderItems = (order) => {
+if (Array.isArray(order.items)) return order.items;
+if (Array.isArray(order.order_items)) return order.order_items;
+
+return [];
 };
 
-const getItemCount = (order) => {
-  if (Array.isArray(order.items)) {
-    return order.items.reduce(
-      (total, item) => total + Number(item.quantity || 1),
-      0
-    );
-  }
+const getItemsSummary = (order) => {
+const items = getOrderItems(order);
 
-  if (Array.isArray(order.order_items)) {
-    return order.order_items.reduce(
-      (total, item) => total + Number(item.quantity || 1),
-      0
-    );
-  }
+if (items.length === 0) {
+return order.item_count ? `${order.item_count} item(s)` : "Items unavailable";
+}
 
-  return Number(order.item_count || order.quantity || 0);
+return items
+.map((item) => {
+const name =
+item.product_name ||
+item.product?.name ||
+item.name ||
+"Product";
+
+
+  return `${name} × ${item.quantity || 1}`;
+})
+.join(", ");
+
+
 };
 
 export default function Orders() {
-  const [orders, setOrders] = useState([]);
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("All");
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [updatingId, setUpdatingId] = useState(null);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+const [orders, setOrders] = useState([]);
+const [search, setSearch] = useState("");
+const [statusFilter, setStatusFilter] = useState("ALL");
+const [loading, setLoading] = useState(true);
+const [refreshing, setRefreshing] = useState(false);
+const [updatingId, setUpdatingId] = useState(null);
+const [error, setError] = useState("");
+const [success, setSuccess] = useState("");
 
-  // Fetch orders from the Django backend.
-  const fetchOrders = useCallback(async (showLoader = true) => {
-    if (showLoader) {
-      setLoading(true);
-    } else {
-      setRefreshing(true);
-    }
+const getToken = () =>
+localStorage.getItem("zinoraAdminToken") ||
+sessionStorage.getItem("zinoraAdminToken") ||
+"";
 
-    setError("");
-    setSuccess("");
+const fetchOrders = useCallback(async (showLoader = true) => {
+if (showLoader) setLoading(true);
+else setRefreshing(true);
 
-    try {
-      const token = localStorage.getItem("zinoraAdminToken");
 
-      if (!token) {
-        throw new Error(
-          "Admin token nahi mila. Please admin login dobara karein."
-        );
-      }
+setError("");
 
-      const response = await fetch(API_URL, {
-        method: "GET",
-        headers: {
-          Authorization: `Token ${token}`,
-          Accept: "application/json",
-        },
-      });
+try {
+  const token =
+    localStorage.getItem("zinoraAdminToken") ||
+    sessionStorage.getItem("zinoraAdminToken");
 
-      const data = await response.json().catch(() => ({}));
+  if (!token) {
+    throw new Error("Admin token nahi mila. Dobara admin login karein.");
+  }
 
-      if (response.status === 401 || response.status === 403) {
-        throw new Error(
-          "Admin access denied. Login aur backend permissions check karein."
-        );
-      }
+  const response = await fetch(API_URL, {
+    headers: {
+      Authorization: `Token ${token}`,
+      Accept: "application/json",
+    },
+  });
 
-      if (!response.ok) {
-        throw new Error(
-          data.error ||
-            data.detail ||
-            "Orders load nahi ho paaye. Backend API check karein."
-        );
-      }
+  const data = await response.json().catch(() => ({}));
 
-      const orderList = Array.isArray(data)
-        ? data
-        : Array.isArray(data.orders)
-        ? data.orders
-        : Array.isArray(data.results)
-        ? data.results
-        : [];
+  if (!response.ok) {
+    throw new Error(
+      data.detail ||
+        data.error ||
+        `Orders API failed. Status: ${response.status}`
+    );
+  }
 
-      setOrders(orderList);
-    } catch (err) {
-      setError(err.message || "Orders load karte waqt error aaya.");
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, []);
+  const list = Array.isArray(data)
+    ? data
+    : data.orders || data.results || [];
 
-  useEffect(() => {
-    fetchOrders();
-  }, [fetchOrders]);
+  setOrders(Array.isArray(list) ? list : []);
+} catch (err) {
+  setError(err.message || "Orders load nahi ho paaye.");
+} finally {
+  setLoading(false);
+  setRefreshing(false);
+}
 
-  // Update order status in the backend.
-  const updateOrderStatus = async (order, newStatus) => {
-    const token = localStorage.getItem("zinoraAdminToken");
-    const orderId = order.id;
 
-    if (!token) {
-      setError("Admin token nahi mila. Please dobara login karein.");
-      return;
-    }
+}, []);
 
-    if (orderId === undefined || orderId === null) {
-      setError("Order ID nahi mila. Backend response check karein.");
-      return;
-    }
+useEffect(() => {
+fetchOrders();
 
-    const currentStatus = normalizeStatus(order.status);
 
-    if (currentStatus === newStatus) {
-      return;
-    }
+const timer = setInterval(() => {
+  fetchOrders(false);
+}, 15000);
 
-    if (
-      currentStatus === "Cancelled" ||
-      currentStatus === "Delivered"
-    ) {
-      setError(
-        `Delivered ya Cancelled order ka status change karne ki permission backend mein check karein.`
-      );
-      return;
-    }
+return () => clearInterval(timer);
 
-    setUpdatingId(orderId);
-    setError("");
-    setSuccess("");
 
-    try {
-      const response = await fetch(`${API_URL}${orderId}/`, {
-        method: "PATCH",
-        headers: {
-          Authorization: `Token ${token}`,
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify({
-          status: newStatus,
-        }),
-      });
+}, [fetchOrders]);
 
-      const data = await response.json().catch(() => ({}));
+const updateOrderStatus = async (order, newStatus) => {
+const token = getToken();
 
-      if (!response.ok) {
-        throw new Error(
-          data.error ||
-            data.detail ||
-            "Order status update nahi hua. Backend PATCH API check karein."
-        );
-      }
 
-      const updatedStatus = normalizeStatus(
-        data.status || newStatus
-      );
+if (!token) {
+  setError("Admin token nahi mila. Dobara login karein.");
+  return;
+}
 
-      setOrders((previousOrders) =>
-        previousOrders.map((item) =>
-          String(item.id) === String(orderId)
-            ? { ...item, ...data, status: updatedStatus }
-            : item
-        )
-      );
+if (!order.id) {
+  setError("Order database ID response mein nahi mila.");
+  return;
+}
 
-      setSuccess(
-        `Order #${getOrderId(order)} status updated to ${updatedStatus}.`
-      );
-    } catch (err) {
-      setError(
-        err.message || "Order status update karte waqt error aaya."
-      );
-    } finally {
-      setUpdatingId(null);
-    }
-  };
+if (normalizeStatus(order.status) === newStatus) return;
 
-  // Summary counts.
-  const pendingCount = orders.filter(
-    (order) => normalizeStatus(order.status) === "Pending"
-  ).length;
+setUpdatingId(order.id);
+setError("");
+setSuccess("");
 
-  const processingCount = orders.filter((order) =>
-    ["Confirmed", "Processing", "Shipped"].includes(
-      normalizeStatus(order.status)
+try {
+  const response = await fetch(`${API_URL}${order.id}/`, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Token ${token}`,
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify({ status: newStatus }),
+  });
+
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(
+      data.detail ||
+        data.error ||
+        `Status update failed. Status: ${response.status}`
+    );
+  }
+
+  setOrders((previous) =>
+    previous.map((item) =>
+      String(item.id) === String(order.id)
+        ? { ...item, ...data, status: data.status || newStatus }
+        : item
     )
-  ).length;
+  );
 
-  const deliveredCount = orders.filter(
-    (order) => normalizeStatus(order.status) === "Delivered"
-  ).length;
+  setSuccess(
+    `Order ${order.order_number || order.id} updated to ${getStatusLabel(
+      data.status || newStatus
+    )}.`
+  );
 
-  // Search and status filter.
-  const filteredOrders = useMemo(() => {
-    const query = search.trim().toLowerCase();
+  // Refresh from database to show the actual saved status.
+  await fetchOrders(false);
+} catch (err) {
+  setError(err.message || "Order status update nahi hua.");
+} finally {
+  setUpdatingId(null);
+}
 
-    return orders.filter((order) => {
-      const orderStatus = normalizeStatus(order.status);
 
-      const matchesStatus =
-        statusFilter === "All" || orderStatus === statusFilter;
+};
 
-      const customerName = getCustomerName(order);
+const filteredOrders = useMemo(() => {
+const query = search.trim().toLowerCase();
 
-      const customerEmail =
-        order.customer_email ||
-        order.email ||
-        order.customer?.email ||
-        "";
 
-      const searchableValues = [
-        getOrderId(order),
-        customerName,
-        customerEmail,
-        order.status,
-        order.payment_status,
-      ];
+return orders.filter((order) => {
+  const status = normalizeStatus(order.status);
 
-      const matchesSearch =
-        !query ||
-        searchableValues.some((value) =>
-          String(value ?? "").toLowerCase().includes(query)
-        );
+  const matchesStatus =
+    statusFilter === "ALL" || status === statusFilter;
 
-      return matchesStatus && matchesSearch;
-    });
-  }, [orders, search, statusFilter]);
+  const searchable = [
+    order.order_number,
+    order.id,
+    getCustomerName(order),
+    getCustomerEmail(order),
+    getCustomerPhone(order),
+    getAddressText(order),
+    order.payment_method,
+    order.payment_status,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
 
-  const summaryCards = [
-    {
-      title: "Total Orders",
-      value: orders.length,
-      icon: <ShoppingCartIcon />,
-      color: COLORS.maroon,
-      background: "#f4e6e9",
-    },
-    {
-      title: "Pending Orders",
-      value: pendingCount,
-      icon: <PendingActionsIcon />,
-      color: "#b7791f",
-      background: "#fff3d6",
-    },
-    {
-      title: "Processing Orders",
-      value: processingCount,
-      icon: <LocalShippingIcon />,
-      color: "#2563a6",
-      background: "#e4effc",
-    },
-    {
-      title: "Delivered Orders",
-      value: deliveredCount,
-      icon: <CheckCircleIcon />,
-      color: "#21834a",
-      background: "#e7f5ec",
-    },
-  ];
+  return matchesStatus && (!query || searchable.includes(query));
+});
 
-  return (
-    <Box
+
+}, [orders, search, statusFilter]);
+
+const summary = [
+{
+title: "Total Orders",
+value: orders.length,
+icon: <ShoppingCartIcon />,
+color: COLORS.maroon,
+background: "#f4e6e9",
+},
+{
+title: "Placed Orders",
+value: orders.filter(
+(order) => normalizeStatus(order.status) === "PLACED"
+).length,
+icon: <PendingActionsIcon />,
+color: "#b7791f",
+background: "#fff3d6",
+},
+{
+title: "In Transit",
+value: orders.filter((order) =>
+["CONFIRMED", "PACKED", "SHIPPED"].includes(
+normalizeStatus(order.status)
+)
+).length,
+icon: <LocalShippingIcon />,
+color: "#2563a6",
+background: "#e4effc",
+},
+{
+title: "Delivered",
+value: orders.filter(
+(order) => normalizeStatus(order.status) === "DELIVERED"
+).length,
+icon: <CheckCircleIcon />,
+color: "#21834a",
+background: "#e7f5ec",
+},
+];
+
+return (
+<Box
+sx={{
+minHeight: "100%",
+backgroundColor: COLORS.background,
+p: { xs: 1.5, md: 3 },
+}}
+>
+<Stack
+direction={{ xs: "column", sm: "row" }}
+justifyContent="space-between"
+alignItems={{ xs: "stretch", sm: "center" }}
+spacing={2}
+mb={3}
+> <Box>
+<Typography
+variant="h4"
+sx={{
+color: COLORS.maroon,
+fontWeight: 800,
+fontSize: { xs: "1.5rem", md: "2rem" },
+}}
+>
+Orders Management </Typography>
+
+
+      <Typography color="text.secondary" mt={0.5}>
+        View delivery details and manage customer orders.
+      </Typography>
+    </Box>
+
+    <Button
+      variant="contained"
+      startIcon={
+        refreshing ? (
+          <CircularProgress size={17} color="inherit" />
+        ) : (
+          <RefreshIcon />
+        )
+      }
+      onClick={() => fetchOrders(false)}
+      disabled={loading || refreshing}
       sx={{
-        minHeight: "100%",
-        backgroundColor: COLORS.background,
-        p: { xs: 2, md: 3 },
+        backgroundColor: COLORS.maroon,
+        textTransform: "none",
+        fontWeight: 700,
+        "&:hover": { backgroundColor: "#4b0818" },
       }}
     >
-      {/* Header */}
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: { xs: "flex-start", sm: "center" },
-          justifyContent: "space-between",
-          flexDirection: { xs: "column", sm: "row" },
-          gap: 2,
-          mb: 3,
-        }}
-      >
-        <Box>
-          <Typography
-            variant="h4"
-            sx={{
-              color: COLORS.maroon,
-              fontWeight: 800,
-              fontSize: { xs: "1.65rem", md: "2rem" },
-            }}
-          >
-            Orders Management
-          </Typography>
+      Refresh Orders
+    </Button>
+  </Stack>
 
-          <Typography
-            variant="body2"
-            sx={{ color: COLORS.muted, mt: 0.7 }}
-          >
-            View customer orders and manage order processing.
-          </Typography>
-        </Box>
+  {error && (
+    <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError("")}>
+      {error}
+    </Alert>
+  )}
 
-        <Button
-          variant="contained"
-          startIcon={
-            refreshing ? (
-              <CircularProgress size={17} color="inherit" />
-            ) : (
-              <RefreshIcon />
-            )
-          }
-          onClick={() => fetchOrders(false)}
-          disabled={loading || refreshing}
-          sx={{
-            backgroundColor: COLORS.maroon,
-            borderRadius: 2,
-            px: 2.5,
-            py: 1.1,
-            textTransform: "none",
-            fontWeight: 700,
-            "&:hover": {
-              backgroundColor: "#4b0818",
-            },
-          }}
-        >
-          Refresh
-        </Button>
-      </Box>
+  {success && (
+    <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccess("")}>
+      {success}
+    </Alert>
+  )}
 
-      {/* Messages */}
-      {error && (
-        <Alert
-          severity="error"
-          onClose={() => setError("")}
-          sx={{ mb: 2, borderRadius: 2 }}
-        >
-          {error}
-        </Alert>
-      )}
-
-      {success && (
-        <Alert
-          severity="success"
-          onClose={() => setSuccess("")}
-          sx={{ mb: 2, borderRadius: 2 }}
-        >
-          {success}
-        </Alert>
-      )}
-
-      {/* Summary cards */}
-      <Box
-        sx={{
-          display: "grid",
-          gridTemplateColumns: {
-            xs: "1fr",
-            sm: "repeat(2, minmax(0, 1fr))",
-            xl: "repeat(4, minmax(0, 1fr))",
-          },
-          gap: 2,
-          mb: 3,
-        }}
-      >
-        {summaryCards.map((card) => (
-          <Card
-            key={card.title}
-            elevation={0}
-            sx={{
-              border: `1px solid ${COLORS.border}`,
-              borderRadius: 3,
-              backgroundColor: "#fff",
-            }}
-          >
-            <CardContent
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                gap: 2,
-              }}
-            >
-              <Box
-                sx={{
-                  width: 48,
-                  height: 48,
-                  borderRadius: 2,
-                  display: "grid",
-                  placeItems: "center",
-                  backgroundColor: card.background,
-                  color: card.color,
-                  flexShrink: 0,
-                }}
-              >
-                {card.icon}
-              </Box>
-
-              <Box>
-                <Typography variant="body2" color="text.secondary">
-                  {card.title}
-                </Typography>
-
-                <Typography variant="h5" fontWeight={800}>
-                  {card.value}
-                </Typography>
-              </Box>
-            </CardContent>
-          </Card>
-        ))}
-      </Box>
-
-      {/* Orders table */}
-      <Paper
+  <Box
+    sx={{
+      display: "grid",
+      gridTemplateColumns: {
+        xs: "1fr",
+        sm: "repeat(2, minmax(0, 1fr))",
+        xl: "repeat(4, minmax(0, 1fr))",
+      },
+      gap: 2,
+      mb: 3,
+    }}
+  >
+    {summary.map((item) => (
+      <Card
+        key={item.title}
         elevation={0}
         sx={{
           border: `1px solid ${COLORS.border}`,
           borderRadius: 3,
-          overflow: "hidden",
         }}
       >
-        <Box
-          sx={{
-            p: 2.5,
-            display: "flex",
-            alignItems: { xs: "stretch", md: "center" },
-            justifyContent: "space-between",
-            flexDirection: { xs: "column", md: "row" },
-            gap: 2,
-          }}
-        >
-          <Box>
-            <Typography
-              variant="h6"
-              sx={{ color: COLORS.maroon, fontWeight: 800 }}
-            >
-              All Orders
-            </Typography>
-
-            <Typography
-              variant="body2"
-              color="text.secondary"
-              sx={{ mt: 0.5 }}
-            >
-              Showing {filteredOrders.length} of {orders.length} orders
-            </Typography>
-          </Box>
-
-          <Stack
-            direction={{ xs: "column", sm: "row" }}
-            spacing={1.5}
-          >
-            <TextField
-              size="small"
-              placeholder="Search order or customer..."
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              sx={{
-                minWidth: { sm: 260 },
-                "& .MuiOutlinedInput-root": {
-                  borderRadius: 2,
-                  backgroundColor: "#fff",
-                },
-              }}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon sx={{ color: COLORS.muted }} />
-                  </InputAdornment>
-                ),
-              }}
-            />
-
-            <FormControl size="small" sx={{ minWidth: 160 }}>
-              <Select
-                value={statusFilter}
-                onChange={(event) => setStatusFilter(event.target.value)}
-                sx={{
-                  borderRadius: 2,
-                  backgroundColor: "#fff",
-                }}
-              >
-                <MenuItem value="All">All Statuses</MenuItem>
-
-                {ORDER_STATUSES.map((status) => (
-                  <MenuItem key={status} value={status}>
-                    {status}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Stack>
-        </Box>
-
-        <Divider sx={{ borderColor: COLORS.border }} />
-
-        {loading ? (
+        <CardContent sx={{ display: "flex", alignItems: "center", gap: 2 }}>
           <Box
             sx={{
-              minHeight: 250,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              flexDirection: "column",
-              gap: 1.5,
+              width: 48,
+              height: 48,
+              display: "grid",
+              placeItems: "center",
+              borderRadius: 2,
+              color: item.color,
+              backgroundColor: item.background,
             }}
           >
-            <CircularProgress sx={{ color: COLORS.maroon }} />
+            {item.icon}
+          </Box>
 
-            <Typography color="text.secondary">
-              Loading orders...
+          <Box>
+            <Typography variant="body2" color="text.secondary">
+              {item.title}
+            </Typography>
+            <Typography variant="h5" fontWeight={800}>
+              {item.value}
             </Typography>
           </Box>
-        ) : (
-          <TableContainer sx={{ overflowX: "auto" }}>
-            <Table sx={{ minWidth: 1150 }}>
-              <TableHead>
-                <TableRow sx={{ backgroundColor: "#faf7f5" }}>
-                  {[
-                    "Order ID",
-                    "Customer",
-                    "Order Date",
-                    "Items",
-                    "Total Amount",
-                    "Payment",
-                    "Order Status",
-                    "Update Status",
-                  ].map((heading) => (
-                    <TableCell
-                      key={heading}
-                      sx={{
-                        fontWeight: 800,
-                        color: COLORS.maroon,
-                        whiteSpace: "nowrap",
-                        py: 2,
-                      }}
-                    >
-                      {heading}
+        </CardContent>
+      </Card>
+    ))}
+  </Box>
+
+  <Paper
+    elevation={0}
+    sx={{
+      border: `1px solid ${COLORS.border}`,
+      borderRadius: 3,
+      overflow: "hidden",
+    }}
+  >
+    <Box
+      sx={{
+        p: 2.5,
+        display: "flex",
+        flexDirection: { xs: "column", md: "row" },
+        justifyContent: "space-between",
+        gap: 2,
+      }}
+    >
+      <Box>
+        <Typography variant="h6" fontWeight={800} color={COLORS.maroon}>
+          All Customer Orders
+        </Typography>
+        <Typography variant="body2" color="text.secondary" mt={0.5}>
+          Showing {filteredOrders.length} of {orders.length} orders
+        </Typography>
+      </Box>
+
+      <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
+        <TextField
+          size="small"
+          placeholder="Search order, customer or address..."
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon />
+              </InputAdornment>
+            ),
+          }}
+          sx={{ minWidth: { sm: 280 } }}
+        />
+
+        <FormControl size="small" sx={{ minWidth: 160 }}>
+          <Select
+            value={statusFilter}
+            onChange={(event) => setStatusFilter(event.target.value)}
+          >
+            <MenuItem value="ALL">All Statuses</MenuItem>
+            {ORDER_STATUSES.map((status) => (
+              <MenuItem key={status.value} value={status.value}>
+                {status.label}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </Stack>
+    </Box>
+
+    <Divider sx={{ borderColor: COLORS.border }} />
+
+    {loading ? (
+      <Box sx={{ py: 8, textAlign: "center" }}>
+        <CircularProgress sx={{ color: COLORS.maroon }} />
+        <Typography mt={2} color="text.secondary">
+          Loading orders...
+        </Typography>
+      </Box>
+    ) : (
+      <TableContainer sx={{ overflowX: "auto" }}>
+        <Table sx={{ minWidth: 1500 }}>
+          <TableHead>
+            <TableRow sx={{ backgroundColor: "#faf7f5" }}>
+              {[
+                "Order ID",
+                "Customer",
+                "Delivery Address",
+                "Order Date",
+                "Items",
+                "Total",
+                "Payment Method",
+                "Payment Status",
+                "Order Status",
+                "Update Status",
+              ].map((heading) => (
+                <TableCell
+                  key={heading}
+                  sx={{
+                    fontWeight: 800,
+                    color: COLORS.maroon,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {heading}
+                </TableCell>
+              ))}
+            </TableRow>
+          </TableHead>
+
+          <TableBody>
+            {filteredOrders.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={10} align="center" sx={{ py: 7 }}>
+                  <ShoppingCartIcon
+                    sx={{ fontSize: 42, color: "#b5aaa5" }}
+                  />
+                  <Typography fontWeight={700} mt={1}>
+                    No orders found
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Orders will appear here when returned by the backend.
+                  </Typography>
+                </TableCell>
+              </TableRow>
+            ) : (
+              filteredOrders.map((order) => {
+                const status = normalizeStatus(order.status);
+                const isUpdating =
+                  String(updatingId) === String(order.id);
+
+                return (
+                  <TableRow hover key={order.id}>
+                    <TableCell sx={{ whiteSpace: "nowrap" }}>
+                      <Typography fontWeight={800} color={COLORS.maroon}>
+                        #{order.order_number || order.id}
+                      </Typography>
                     </TableCell>
-                  ))}
-                </TableRow>
-              </TableHead>
 
-              <TableBody>
-                {filteredOrders.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={8}>
-                      <Box
-                        sx={{
-                          py: 6,
-                          display: "flex",
-                          flexDirection: "column",
-                          alignItems: "center",
-                          gap: 1,
-                        }}
-                      >
-                        <ShoppingCartIcon
-                          sx={{ fontSize: 42, color: "#b5aaa5" }}
+                    <TableCell sx={{ minWidth: 180 }}>
+                      <Typography fontWeight={700}>
+                        {getCustomerName(order)}
+                      </Typography>
+                      <Typography variant="caption" display="block">
+                        {getCustomerEmail(order) || "Email unavailable"}
+                      </Typography>
+                      <Typography variant="caption" display="block">
+                        {getCustomerPhone(order) || "Phone unavailable"}
+                      </Typography>
+                    </TableCell>
+
+                    <TableCell sx={{ minWidth: 280, maxWidth: 360 }}>
+                      <Stack direction="row" spacing={1} alignItems="flex-start">
+                        <LocationOnIcon
+                          sx={{ color: COLORS.maroon, fontSize: 19, mt: 0.2 }}
                         />
-
-                        <Typography fontWeight={700}>
-                          No orders found
-                        </Typography>
-
                         <Typography
                           variant="body2"
-                          color="text.secondary"
+                          sx={{ whiteSpace: "normal", lineHeight: 1.6 }}
                         >
-                          Orders will appear here when they are available
-                          through your backend API.
+                          {getAddressText(order)}
                         </Typography>
-                      </Box>
+                      </Stack>
+                    </TableCell>
+
+                    <TableCell sx={{ whiteSpace: "nowrap" }}>
+                      {formatDate(order.created_at || order.created)}
+                    </TableCell>
+
+                    <TableCell sx={{ minWidth: 220, whiteSpace: "normal" }}>
+                      {getItemsSummary(order)}
+                    </TableCell>
+
+                    <TableCell sx={{ whiteSpace: "nowrap" }}>
+                      <Typography fontWeight={800}>
+                        {formatCurrency(order.total_amount)}
+                      </Typography>
+                    </TableCell>
+
+                    <TableCell>
+                      {String(order.payment_method || "—").toUpperCase()}
+                    </TableCell>
+
+                    <TableCell>
+                      <Chip
+                        size="small"
+                        label={order.payment_status || "PENDING"}
+                        color={
+                          String(order.payment_status).toUpperCase() === "PAID"
+                            ? "success"
+                            : String(order.payment_status).toUpperCase() === "FAILED"
+                            ? "error"
+                            : "default"
+                        }
+                        variant="outlined"
+                      />
+                    </TableCell>
+
+                    <TableCell>
+                      <Chip
+                        size="small"
+                        label={getStatusLabel(status)}
+                        color={getStatusColor(status)}
+                        variant="outlined"
+                      />
+                    </TableCell>
+
+                    <TableCell sx={{ minWidth: 175 }}>
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <FormControl size="small" fullWidth>
+                          <Select
+                            value={status}
+                            disabled={isUpdating}
+                            onChange={(event) =>
+                              updateOrderStatus(order, event.target.value)
+                            }
+                          >
+                            {ORDER_STATUSES.map((item) => (
+                              <MenuItem
+                                key={item.value}
+                                value={item.value}
+                              >
+                                {item.label}
+                              </MenuItem>
+                            ))}
+                          </Select>
+                        </FormControl>
+
+                        {isUpdating && <CircularProgress size={18} />}
+                      </Stack>
                     </TableCell>
                   </TableRow>
-                ) : (
-                  filteredOrders.map((order, index) => {
-                    const orderId = getOrderId(order);
-                    const status = normalizeStatus(order.status);
-                    const paymentStatus = getPaymentStatus(order);
-                    const updating =
-                      String(updatingId) === String(order.id);
+                );
+              })
+            )}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    )}
+  </Paper>
 
-                    return (
-                      <TableRow
-                        hover
-                        key={order.id ?? `${orderId}-${index}`}
-                        sx={{
-                          "&:last-child td": {
-                            borderBottom: 0,
-                          },
-                        }}
-                      >
-                        <TableCell>
-                          <Typography
-                            fontWeight={800}
-                            color={COLORS.maroon}
-                            sx={{ whiteSpace: "nowrap" }}
-                          >
-                            #{orderId}
-                          </Typography>
-                        </TableCell>
+  <Typography variant="caption" display="block" mt={2} color="text.secondary">
+    Orders, delivery addresses and status updates are loaded from the Django
+    backend. Status changes must be saved successfully by the backend before
+    they are considered complete.
+  </Typography>
+</Box>
 
-                        <TableCell sx={{ minWidth: 170 }}>
-                          <Typography fontWeight={700} fontSize={14}>
-                            {getCustomerName(order)}
-                          </Typography>
 
-                          <Typography
-                            variant="caption"
-                            color="text.secondary"
-                          >
-                            {order.customer_email ||
-                              order.email ||
-                              order.customer?.email ||
-                              "—"}
-                          </Typography>
-                        </TableCell>
-
-                        <TableCell sx={{ whiteSpace: "nowrap" }}>
-                          {formatDate(getOrderDate(order))}
-                        </TableCell>
-
-                        <TableCell>
-                          {getItemCount(order)}
-                        </TableCell>
-
-                        <TableCell sx={{ whiteSpace: "nowrap" }}>
-                          <Typography fontWeight={800}>
-                            {formatCurrency(getOrderAmount(order))}
-                          </Typography>
-                        </TableCell>
-
-                        <TableCell>
-                          <Chip
-                            size="small"
-                            label={paymentStatus}
-                            color={
-                              String(paymentStatus).toLowerCase() ===
-                                "paid" ||
-                              String(paymentStatus).toLowerCase() ===
-                                "completed"
-                                ? "success"
-                                : "default"
-                            }
-                            variant="outlined"
-                            sx={{ fontWeight: 700 }}
-                          />
-                        </TableCell>
-
-                        <TableCell>
-                          <Chip
-                            size="small"
-                            label={status}
-                            color={getStatusColor(status)}
-                            variant="outlined"
-                            sx={{
-                              fontWeight: 700,
-                              minWidth: 85,
-                            }}
-                          />
-                        </TableCell>
-
-                        <TableCell sx={{ minWidth: 190 }}>
-                          <Stack
-                            direction="row"
-                            spacing={1}
-                            alignItems="center"
-                          >
-                            <FormControl
-                              size="small"
-                              sx={{ minWidth: 125 }}
-                            >
-                              <Select
-                                value={status}
-                                disabled={
-                                  updating ||
-                                  status === "Delivered" ||
-                                  status === "Cancelled"
-                                }
-                                onChange={(event) =>
-                                  updateOrderStatus(
-                                    order,
-                                    event.target.value
-                                  )
-                                }
-                                sx={{
-                                  borderRadius: 2,
-                                  fontSize: 13,
-                                  backgroundColor: "#fff",
-                                }}
-                              >
-                                {ORDER_STATUSES.map((item) => (
-                                  <MenuItem key={item} value={item}>
-                                    {item}
-                                  </MenuItem>
-                                ))}
-                              </Select>
-                            </FormControl>
-
-                            {updating && (
-                              <CircularProgress
-                                size={18}
-                                sx={{ color: COLORS.maroon }}
-                              />
-                            )}
-                          </Stack>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })
-                )}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        )}
-      </Paper>
-
-      <Typography
-        variant="caption"
-        sx={{
-          display: "block",
-          mt: 2,
-          color: COLORS.muted,
-        }}
-      >
-        Order information and status updates are managed by the Django
-        backend. Payment status should be updated only after verified
-        payment confirmation.
-      </Typography>
-    </Box>
-  );
+);
 }

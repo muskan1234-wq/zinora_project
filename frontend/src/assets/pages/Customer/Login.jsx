@@ -118,19 +118,28 @@ try {
     return;
   }
 
-  // CUSTOMER LOGIN
-  localStorage.setItem("zinoraToken", token);
-  localStorage.setItem("zinoraRole", role);
-  localStorage.setItem("zinoraUsername", username);
+ // CUSTOMER LOGIN
+localStorage.setItem("zinoraToken", token);
+localStorage.setItem("zinoraRole", role);
+localStorage.setItem("zinoraUsername", username);
 
-  // Save customer-specific authentication keys as well.
-  localStorage.setItem("zinoraCustomerToken", token);
-  localStorage.setItem("zinoraCustomerUsername", username);
+// Save customer-specific authentication details
+localStorage.setItem("zinoraCustomerToken", token);
+localStorage.setItem("zinoraCustomerUsername", username);
+localStorage.setItem("zinoraCustomerRole", role);
+localStorage.setItem("zinoraToken", data.token);
+localStorage.setItem("zinoraRole", data.role);
+localStorage.setItem("zinoraUsername", data.username);
 
-  // Clear any previous administrator session.
-  localStorage.removeItem("zinoraAdminToken");
-  localStorage.removeItem("zinoraAdminRole");
-  localStorage.removeItem("zinoraAdminUsername");
+// Remove any previous administrator session
+localStorage.removeItem("zinoraAdminToken");
+localStorage.removeItem("zinoraAdminRole");
+localStorage.removeItem("zinoraAdminUsername");
+
+// Return to the requested page, or open the home page
+const redirectTo = location.state?.from?.pathname || "/";
+navigate(redirectTo, { replace: true });
+
 
   // Customer goes to the main Zinora shopping website.
   navigate("/", { replace: true });

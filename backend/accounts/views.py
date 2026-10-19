@@ -478,3 +478,53 @@ class AdminCustomersView(APIView):
             },
             status=status.HTTP_200_OK,
         )
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+
+
+class CustomerProfileView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+
+        return Response({
+            "id": user.id,
+            "username": user.username,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "email": user.email,
+            "phone": user.phone or "",
+            "address": user.address or "",
+        })
+
+    def patch(self, request):
+        user = request.user
+
+        allowed_fields = [
+            "first_name",
+            "last_name",
+            "email",
+            "phone",
+            "address",
+        ]
+
+        for field in allowed_fields:
+            if field in request.data:
+                setattr(user, field, request.data[field])
+
+        user.save()
+
+        return Response({
+            "message": "Profile saved successfully in database.",
+            "profile": {
+                "id": user.id,
+                "username": user.username,
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+                "email": user.email,
+                "phone": user.phone or "",
+                "address": user.address or "",
+            },
+        })
