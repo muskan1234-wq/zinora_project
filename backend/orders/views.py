@@ -1,4 +1,3 @@
-
 from django.shortcuts import get_object_or_404
 
 from rest_framework.views import APIView
@@ -7,26 +6,21 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.authentication import TokenAuthentication
 
-from .models import Order
-from .serializers import OrderSerializer
+from products.models import Order
+from products.serializers import OrderSerializer
 
 
 class AdminOrdersView(APIView):
-
     authentication_classes = [TokenAuthentication]
     permission_classes = [IsAuthenticated]
 
     def check_admin(self, request):
-        user = request.user
-
         return (
-            user.is_authenticated
-            and user.is_staff
-            and getattr(user, "role", None) == "ADMIN"
+            request.user.is_authenticated
+            and getattr(request.user, "role", None) == "ADMIN"
         )
 
     def get(self, request, pk=None):
-
         if not self.check_admin(request):
             return Response(
                 {"error": "Admin access required."},
@@ -34,28 +28,28 @@ class AdminOrdersView(APIView):
             )
 
         if pk is not None:
-            order = get_object_or_404(Order, pk=pk)
+            order = get_object_or_404(
+                Order.objects.select_related(
+                    "customer", "address"
+                ).prefetch_related("items"),
+                pk=pk,
+            )
 
-            serializer = OrderSerializer(order)
+            return Response(OrderSerializer(order).data)
 
-            return Response(serializer.data)
-
-        orders = Order.objects.select_related(
-            "customer"
-        ).all()
-
-        serializer = OrderSerializer(
-            orders,
-            many=True,
+        orders = (
+            Order.objects
+            .select_related("customer", "address")
+            .prefetch_related("items")
+            .order_by("-created_at")
         )
 
         return Response({
             "count": orders.count(),
-            "orders": serializer.data,
+            "orders": OrderSerializer(orders, many=True).data,
         })
 
     def patch(self, request, pk=None):
-
         if not self.check_admin(request):
             return Response(
                 {"error": "Admin access required."},
@@ -70,61 +64,57 @@ class AdminOrdersView(APIView):
 
         order = get_object_or_404(Order, pk=pk)
 
-        allowed_fields = {
-            "status",
-            "payment_status",
+        # Existing Admin UI ke status labels ko database choices
+        # ke saath compatible banane ke liye aliases.
+        status_aliases = {
+            "PENDING": "PLACED",
+            "PROCESSING": "PACKED",
+            "PLACED": "PLACED",
+            "CONFIRMED": "CONFIRMED",
+            "PACKED": "PACKED",
+            "SHIPPED": "SHIPPED",
+            "DELIVERED": "DELIVERED",
+            "CANCELLED": "CANCELLED",
+            "RETURNED": "RETURNED",
         }
 
-        if not request.data:
-            return Response(
-                {"error": "No update data provided."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        if "status" in request.data:
+            requested_status = str(
+                request.data["status"]
+            ).strip().upper()
 
-        unexpected_fields = (
-            set(request.data.keys()) - allowed_fields
-        )
+            new_status = status_aliases.get(requested_status)
 
-        if unexpected_fields:
-            return Response(
-                {
-                    "error": (
-                        "Only status and payment_status "
-                        "can be updated."
-                    )
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        new_status = request.data.get("status")
-        new_payment_status = request.data.get(
-            "payment_status"
-        )
-
-        if new_status is not None:
-            valid_statuses = dict(
-                Order.STATUS_CHOICES
-            )
+            valid_statuses = dict(Order.ORDER_STATUSES)
 
             if new_status not in valid_statuses:
                 return Response(
-                    {"error": "Invalid order status."},
+                    {
+                        "error": "Invalid order status.",
+                        "valid_statuses": list(valid_statuses.keys()),
+                    },
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
             order.status = new_status
 
-        if new_payment_status is not None:
+        if "payment_status" in request.data:
+            new_payment_status = str(
+                request.data["payment_status"]
+            ).strip().upper()
+
             valid_payment_statuses = dict(
-                Order.PAYMENT_STATUS_CHOICES
+                Order.PAYMENT_STATUSES
             )
 
-            if (
-                new_payment_status
-                not in valid_payment_statuses
-            ):
+            if new_payment_status not in valid_payment_statuses:
                 return Response(
-                    {"error": "Invalid payment status."},
+                    {
+                        "error": "Invalid payment status.",
+                        "valid_payment_statuses": list(
+                            valid_payment_statuses.keys()
+                        ),
+                    },
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
@@ -132,9 +122,14 @@ class AdminOrdersView(APIView):
 
         order.save()
 
-        serializer = OrderSerializer(order)
+        order = (
+            Order.objects
+            .select_related("customer", "address")
+            .prefetch_related("items")
+            .get(pk=order.pk)
+        )
 
         return Response({
             "message": "Order updated successfully.",
-            **serializer.data,
+            "order": OrderSerializer(order).data,
         })

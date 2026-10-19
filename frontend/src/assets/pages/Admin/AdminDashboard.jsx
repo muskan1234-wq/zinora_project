@@ -99,6 +99,53 @@ const location = useLocation();
 const [mobileOpen, setMobileOpen] = useState(false);
 const [search, setSearch] = useState("");
 const [anchorEl, setAnchorEl] = useState(null);
+const [unreadNotifications, setUnreadNotifications] = useState(0);
+useEffect(() => {
+  const fetchUnreadNotifications = async () => {
+    const token =
+      localStorage.getItem("zinoraAdminToken") ||
+      sessionStorage.getItem("zinoraAdminToken") ||
+      localStorage.getItem("authToken") ||
+      localStorage.getItem("token");
+
+    if (!token) return;
+
+    try {
+      const response = await fetch(
+        "http://127.0.0.1:8000/api/products/admin/notifications/",
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Token ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        console.error(
+          "Notification API failed:",
+          response.status
+        );
+        return;
+      }
+
+      const data = await response.json();
+
+      setUnreadNotifications(
+        Number(data.unread_count) || 0
+      );
+    } catch (error) {
+      console.error("Failed to fetch notifications:", error);
+    }
+  };
+
+  fetchUnreadNotifications();
+
+  const interval = setInterval(fetchUnreadNotifications, 15000);
+
+  return () => clearInterval(interval);
+}, []);
 
 const username =
 localStorage.getItem("zinoraAdminUsername") ||
@@ -427,10 +474,42 @@ backgroundColor: "#f7f5f2",
         />
       </Box>
 
-      {/* NOTIFICATIONS */}
-      <IconButton sx={{ flexShrink: 0 }}>
-        <NotificationsIcon />
-      </IconButton>
+     {/* NOTIFICATIONS */}
+<IconButton
+onClick={() => navigate("/admin/dashboard/notifications")}
+aria-label="Open notifications"
+sx={{
+flexShrink: 0,
+color: MAROON,
+position: "relative",
+}}
+
+>
+
+  <NotificationsIcon />
+
+{unreadNotifications > 0 && (
+<Box
+sx={{
+position: "absolute",
+top: 3,
+right: 3,
+minWidth: 17,
+height: 17,
+px: 0.4,
+borderRadius: "50%",
+backgroundColor: "#d32f2f",
+color: "#fff",
+fontSize: 10,
+fontWeight: 800,
+display: "flex",
+alignItems: "center",
+justifyContent: "center",
+}}
+>
+{unreadNotifications > 99 ? "99+" : unreadNotifications} </Box>
+)} </IconButton>
+
 
       {/* ADMIN AVATAR */}
       <Avatar

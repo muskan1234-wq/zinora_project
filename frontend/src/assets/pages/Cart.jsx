@@ -587,11 +587,7 @@ YOUR PERSONAL COLLECTION </Typography>
               fullWidth
               variant="contained"
               disabled={cartItems.length === 0}
-              onClick={() =>
-                window.alert(
-                  "Checkout page will be connected soon."
-                )
-              }
+             onClick={() => navigate("/checkout")}
               sx={{
                 mt: 1,
                 py: 1.5,

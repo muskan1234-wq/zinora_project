@@ -185,7 +185,7 @@ class Address(models.Model):
         on_delete=models.CASCADE,
         related_name="saved_addresses"
     )
-
+  
     full_name = models.CharField(max_length=150)
     phone = models.CharField(max_length=20)
 
@@ -196,6 +196,15 @@ class Address(models.Model):
     state = models.CharField(max_length=100)
     postal_code = models.CharField(max_length=15)
     country = models.CharField(max_length=100, default="India")
+    address_type = models.CharField(
+    max_length=20,
+    choices=[
+        ("Home", "Home"),
+        ("Work", "Work"),
+        ("Other", "Other"),
+    ],
+    default="Home",
+)
 
     is_default = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
