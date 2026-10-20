@@ -1,1199 +1,216 @@
-
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-
-import {
-  Alert,
-  Box,
-  Button,
-  Card,
-  CardContent,
-  CardMedia,
-  Chip,
-  Container,
-  Grid,
-  IconButton,
-  InputAdornment,
-  MenuItem,
-  Snackbar,
-  Stack,
-  TextField,
-  Typography,
-  CircularProgress,
-} from "@mui/material";
-
-import SearchIcon from "@mui/icons-material/Search";
-import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
-import FavoriteIcon from "@mui/icons-material/Favorite";
-import ShoppingBagOutlinedIcon from "@mui/icons-material/ShoppingBagOutlined";
-import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
-
 import { useNavigate } from "react-router-dom";
+import {
+  Alert, Box, Button, Checkbox, Chip, CircularProgress, Container,
+  FormControl, IconButton, MenuItem, Select, Typography, Paper,
+} from "@mui/material";
+import {
+  Favorite, FavoriteBorder, LocalMallOutlined, ShoppingCartOutlined, Tune, Refresh,
+} from "@mui/icons-material";
 
-/* =========================================================
-   THEME
-========================================================= */
-
-const MAROON = "#641526";
-const DARK_MAROON = "#45101D";
-const GOLD = "#B89556";
-const CREAM = "#FBF7F1";
-
-/* =========================================================
-   API CONFIGURATION
-========================================================= */
-
-const API_BASE = (
-  import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000"
-).replace(/\/+$/, "");
-
+const API_BASE = (import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000").replace(/\/+$/, "");
 const PRODUCTS_API = `${API_BASE}/api/products/`;
 
-const PRODUCT_STORAGE_KEY = "zinoraProducts";
-const WISHLIST_STORAGE_KEY = "zinoraWishlist";
-const CART_STORAGE_KEY = "zinoraCart";
-
-/*
-  Existing website categories.
-  Products belonging to these categories will not appear
-  on the Other Products page.
-*/
-
-const KNOWN_CATEGORIES = [
-  "necklace",
-  "necklaces",
-  "necklaces & chokers",
-  "choker",
-  "chokers",
-
-  "earring",
-  "earrings",
-  "earrings & jhumkas",
-  "jhumka",
-  "jhumkas",
-
-  "ring",
-  "rings",
-  "rings & pendants",
-  "pendant",
-  "pendants",
-
-  "bangle",
-  "bangles",
-  "bangles & kadas",
-  "kada",
-  "kadas",
-
-  "bridal",
-  "bridal & festive",
-  "bridal jewellery",
-  "bridal jewelry",
-  "festive",
-
-  "offers",
-  "offer",
-  "budget",
-  "under ₹199",
-  "under ₹299",
-  "under 199",
-  "under 299",
-
-  "new arrivals",
-  "new arrival",
-];
-
-/* =========================================================
-   HELPERS
-========================================================= */
-
-const normalizeCategory = (category) =>
-  String(category ?? "")
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, " ");
-
-const isOtherCategory = (category) => {
-  const normalized = normalizeCategory(category);
-
-  /*
-    Products with no category are treated as Other Products.
-  */
-
-  if (!normalized) return true;
-
-  /*
-    Admin can explicitly select Other Products.
-  */
-
-  if (
-    [
-      "other",
-      "others",
-      "other product",
-      "other products",
-    ].includes(normalized)
-  ) {
-    return true;
-  }
-
-  /*
-    If the category is not part of the existing website
-    categories, the product belongs to Other Products.
-  */
-
-  return !KNOWN_CATEGORIES.includes(normalized);
-};
-
-const getProductId = (product) =>
-  String(
-    product?.id ??
-      product?.product_id ??
-      product?._id ??
-      product?.slug ??
-      product?.name ??
-      product?.product_name ??
-      ""
-  );
-
-const getProductName = (product) =>
-  product?.name ||
-  product?.product_name ||
-  product?.title ||
-  "Zinora Product";
-
-const getProductPrice = (product) =>
-  Number(
-    product?.price ??
-      product?.selling_price ??
-      product?.sale_price ??
-      0
-  );
-
-const getOriginalPrice = (product) =>
-  Number(
-    product?.originalPrice ??
-      product?.original_price ??
-      product?.old_price ??
-      product?.mrp ??
-      0
-  );
-
-const getProductCategory = (product) => {
-  const category = product?.category;
-
-  if (typeof category === "string") {
-    return category;
-  }
-
-  if (category && typeof category === "object") {
-    return (
-      category.name ||
-      category.title ||
-      category.category_name ||
-      ""
-    );
-  }
-
-  return (
-    product?.category_name ||
-    product?.categoryName ||
-    product?.category_title ||
-    ""
-  );
-};
-
+const formatPrice = (value) => Number(value || 0).toLocaleString("en-IN", { maximumFractionDigits: 0 });
 const getImageUrl = (value) => {
   if (!value) return "";
-
-  let image = value;
-
-  if (typeof image === "object") {
-    image = image.url || image.image || image.src || "";
-  }
-
-  if (typeof image !== "string" || !image.trim()) {
-    return "";
-  }
-
-  if (
-    image.startsWith("http://") ||
-    image.startsWith("https://") ||
-    image.startsWith("data:")
-  ) {
-    return image;
-  }
-
-  return `${API_BASE}/${image.replace(/^\/+/, "")}`;
+  if (typeof value === "object") value = value.url || value.image_url || value.image || "";
+  if (!value) return "";
+  if (/^(https?:\/\/|data:|blob:)/i.test(value)) return value;
+  return `${API_BASE}/${String(value).replace(/^\/+/, "")}`;
 };
-
-const getProductImage = (product) => {
-  const image =
-    product?.image ||
-    product?.image_url ||
-    product?.imageUrl ||
-    product?.product_image ||
-    product?.thumbnail ||
-    (Array.isArray(product?.images) ? product.images[0] : "");
-
-  return getImageUrl(image);
-};
-
-const getProductDescription = (product) =>
-  product?.description ||
-  product?.short_description ||
-  product?.desc ||
-  "";
-
-const isProductActive = (product) => {
-  if (product?.is_active === false) return false;
-  if (product?.active === false) return false;
-
-  if (
-    typeof product?.status === "string" &&
-    ["inactive", "disabled", "draft"].includes(
-      product.status.toLowerCase()
-    )
-  ) {
-    return false;
-  }
-
-  return true;
-};
-
-const getResponseProducts = (data) => {
-  if (Array.isArray(data)) return data;
-
-  if (Array.isArray(data?.results)) return data.results;
-  if (Array.isArray(data?.products)) return data.products;
-  if (Array.isArray(data?.data)) return data.data;
-
-  return [];
-};
-
-const readLocalProducts = () => {
-  try {
-    const stored = JSON.parse(
-      localStorage.getItem(PRODUCT_STORAGE_KEY) || "[]"
-    );
-
-    return Array.isArray(stored) ? stored : [];
-  } catch {
-    return [];
-  }
-};
-
-const readWishlist = () => {
-  try {
-    const stored = JSON.parse(
-      localStorage.getItem(WISHLIST_STORAGE_KEY) || "[]"
-    );
-
-    return Array.isArray(stored) ? stored : [];
-  } catch {
-    return [];
-  }
-};
-
-const readCart = () => {
-  try {
-    const stored = JSON.parse(
-      localStorage.getItem(CART_STORAGE_KEY) || "[]"
-    );
-
-    return Array.isArray(stored) ? stored : [];
-  } catch {
-    return [];
-  }
-};
-
-/* =========================================================
-   COMPONENT
-========================================================= */
+const getText = (v) => (typeof v === "string" ? v : v?.name || "");
+const getArray = (data) => (Array.isArray(data) ? data : data?.results || data?.data || []);
 
 export default function OtherProducts() {
   const navigate = useNavigate();
-
   const [products, setProducts] = useState([]);
-  const [search, setSearch] = useState("");
-  const [sortBy, setSortBy] = useState("featured");
-  const [wishlist, setWishlist] = useState([]);
-
   const [loading, setLoading] = useState(true);
-  const [apiError, setApiError] = useState("");
-
-  const [snackbar, setSnackbar] = useState({
-    open: false,
-    message: "",
-    severity: "success",
+  const [error, setError] = useState("");
+  const [favorites, setFavorites] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("zinoraWishlist") || "[]").map((i) => i.id); } catch { return []; }
   });
+  const [selectedTypes, setSelectedTypes] = useState([]);
+  const [selectedPrice, setSelectedPrice] = useState([]);
+  const [openFilter, setOpenFilter] = useState("type");
+  const [sort, setSort] = useState("Newest First");
+  const [page, setPage] = useState(1);
+  const pageSize = 12;
 
-  /* =========================================================
-     NOTIFICATION
-  ========================================================= */
+  // 50+ SABHI JEWELLERY CATEGORIES
+  const ALL_JEWELLERY_CATEGORIES = [
+    // Haar / Necklace Types
+    "Haar","Rani Haar","Long Haar","Short Haar","Choker Haar","Thushi","Vajratik Haar","Kolhapuri Saaj","Mohan Mala","Chandrahar","Putali Haar",
+    // Mangalsutra Types
+    "Mangalsutra","Long Mangalsutra","Short Mangalsutra","Traditional Mangalsutra","Vati Mangalsutra","Pearl Mangalsutra","Diamond Mangalsutra",
+    // Earrings / Kan ke Types
+    "Earrings","Jhumka","Chandbali","Studs","Tops","Hoops","Bali","Ear Cuff","Kaan Chain","Bugadi","Kanvel","Ear Chain",
+    // Bangles / Hath ke
+    "Bangles","Kada","Chooda","Patli","Tode","Bracelet","Hathphool","Panchi","Vanki","Bajuband",
+    // Nose / Maang
+    "Nose Pin","Nath","Moti Nath","Maang Tikka","Tikka Set","Bor Tikka","Juda Pin","Gajra",
+    // Pair / Kamar
+    "Payal","Anklets","Toe Ring","Jodvi","Kamarbandh","Kamarpatta",
+    // Sets & Other
+    "Bridal Set","Haldi Set","Necklace Set","Temple Jewellery","Oxidized Jewellery","Kundan Set","Polki Set","American Diamond","Pearl Jewellery","One Gram Gold",
+    // Cosmetics / Extras
+    "Cosmetics Jewellery","Bindi","Kumkum Box","Sindoor Box","Hair Accessories","Clutch","Potli Bag"
+  ];
 
-  const showMessage = useCallback(
-    (message, severity = "success") => {
-      setSnackbar({
-        open: true,
-        message,
-        severity,
-      });
-    },
-    []
-  );
-
-  /* =========================================================
-     LOAD PRODUCTS FROM DJANGO
-  ========================================================= */
-
-  const loadProducts = useCallback(async () => {
-    setLoading(true);
-    setApiError("");
-
+  const fetchProducts = useCallback(async () => {
+    setLoading(true); setError("");
     try {
-      const response = await fetch(PRODUCTS_API);
-
-      if (!response.ok) {
-        throw new Error(
-          `Products API returned status ${response.status}`
-        );
-      }
-
-      const data = await response.json();
-
-      const backendProducts = getResponseProducts(data);
-
-      /*
-        Backend is the primary source of product information.
-        Do not append demo products or merge stale local products
-        into the backend response.
-      */
-
-      const activeProducts = backendProducts.filter(isProductActive);
-
-      /*
-        Remove duplicate IDs in the API response.
-      */
-
-      const uniqueProducts = Array.from(
-        new Map(
-          activeProducts.map((product, index) => [
-            getProductId(product) || `product-${index}`,
-            product,
-          ])
-        ).values()
-      );
-
-      setProducts(uniqueProducts);
-
-      /*
-        Keep the local fallback store updated for other components
-        that still use zinoraProducts.
-      */
-
-      try {
-        localStorage.setItem(
-          PRODUCT_STORAGE_KEY,
-          JSON.stringify(uniqueProducts)
-        );
-      } catch {
-        // Backend products still work if localStorage is unavailable.
-      }
-    } catch (error) {
-      console.error("Products API error:", error);
-
-      /*
-        If the backend is unavailable, use previously stored products
-        rather than showing fake demo products.
-      */
-
-      const localProducts = readLocalProducts().filter(isProductActive);
-
-      setProducts(localProducts);
-
-      setApiError(
-        localProducts.length > 0
-          ? "Backend unavailable. Showing previously saved products."
-          : "Could not connect to the products backend. Please start Django and try again."
-      );
-    } finally {
-      setLoading(false);
-    }
+      const res = await fetch(PRODUCTS_API);
+      if (!res.ok) throw new Error(`API Error (${res.status})`);
+      const data = await res.json();
+      const all = getArray(data).map((item) => ({
+        id: item.id, name: getText(item.name) || "Product", price: Number(item.price || 0),
+        img: getImageUrl(item.image || item.image_url), 
+        cat: getText(item.category_name || item.category || ""),
+        style: getText(item.style || ""),
+        createdAt: item.created_at ? new Date(item.created_at).getTime() : 0, 
+        badge: getText(item.category_name || item.category) || "NEW",
+      }));
+      setProducts(all); setPage(1);
+    } catch (err) { setError(err.message); } finally { setLoading(false); }
   }, []);
 
-  /* =========================================================
-     INITIAL LOAD + UPDATE LISTENERS
-  ========================================================= */
+  useEffect(() => { fetchProducts(); }, [fetchProducts]);
 
-  useEffect(() => {
-    loadProducts();
-    setWishlist(readWishlist());
+  const toggleType = (type) => setSelectedTypes(prev => prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]);
+  const togglePrice = (val) => setSelectedPrice(prev => prev.includes(val) ? prev.filter(v => v !== val) : [...prev, val]);
+  const clearFilters = () => { setSelectedTypes([]); setSelectedPrice([]); setSort("Newest First"); setPage(1); };
 
-    /*
-      Same-tab events:
-      Admin dashboard can dispatch these after creating,
-      updating or deleting a product.
-    */
-
-    const handleProductsUpdated = () => {
-      loadProducts();
-    };
-
-    /*
-      Existing Zinora cart updates.
-    */
-
-    const handleCartUpdated = () => {
-      // The cart page can listen to zinoraCartUpdated.
-    };
-
-    /*
-      Other tabs:
-      Storage events fire in other tabs when localStorage changes.
-    */
-
-    const handleStorage = (event) => {
-      if (
-        event.key === PRODUCT_STORAGE_KEY ||
-        event.key === WISHLIST_STORAGE_KEY
-      ) {
-        if (event.key === PRODUCT_STORAGE_KEY) {
-          loadProducts();
-        }
-
-        if (event.key === WISHLIST_STORAGE_KEY) {
-          setWishlist(readWishlist());
-        }
-      }
-    };
-
-    window.addEventListener(
-      "zinoraProductsUpdated",
-      handleProductsUpdated
-    );
-
-    window.addEventListener(
-      "zinoraCartUpdated",
-      handleCartUpdated
-    );
-
-    window.addEventListener("storage", handleStorage);
-
-    return () => {
-      window.removeEventListener(
-        "zinoraProductsUpdated",
-        handleProductsUpdated
-      );
-
-      window.removeEventListener(
-        "zinoraCartUpdated",
-        handleCartUpdated
-      );
-
-      window.removeEventListener("storage", handleStorage);
-    };
-  }, [loadProducts]);
-
-  /* =========================================================
-     FILTER OTHER PRODUCTS
-  ========================================================= */
-
-  const otherProducts = useMemo(() => {
-    return products.filter((product) => {
-      const category = getProductCategory(product);
-
-      return isOtherCategory(category);
-    });
-  }, [products]);
-
-  /* =========================================================
-     SEARCH + SORT
-  ========================================================= */
-
-  const visibleProducts = useMemo(() => {
-    let result = otherProducts.filter((product) => {
-      const query = search.trim().toLowerCase();
-
-      if (!query) return true;
-
-      const name = getProductName(product).toLowerCase();
-      const category = getProductCategory(product).toLowerCase();
-      const description = getProductDescription(product).toLowerCase();
-
-      return (
-        name.includes(query) ||
-        category.includes(query) ||
-        description.includes(query)
-      );
-    });
-
-    if (sortBy === "price-low") {
-      result = [...result].sort(
-        (a, b) => getProductPrice(a) - getProductPrice(b)
-      );
-    } else if (sortBy === "price-high") {
-      result = [...result].sort(
-        (a, b) => getProductPrice(b) - getProductPrice(a)
-      );
-    } else if (sortBy === "name") {
-      result = [...result].sort((a, b) =>
-        getProductName(a).localeCompare(getProductName(b))
-      );
-    }
-
-    return result;
-  }, [otherProducts, search, sortBy]);
-
-  /* =========================================================
-     WISHLIST
-  ========================================================= */
-
-  const toggleWishlist = (product) => {
-    const id = getProductId(product);
-    const current = readWishlist();
-
-    const exists = current.some((item) => {
-      const itemId =
-        typeof item === "object" && item !== null
-          ? getProductId(item)
-          : String(item);
-
-      return itemId === id;
-    });
-
-    let updated;
-
-    if (exists) {
-      updated = current.filter((item) => {
-        const itemId =
-          typeof item === "object" && item !== null
-            ? getProductId(item)
-            : String(item);
-
-        return itemId !== id;
+  const filtered = useMemo(() => {
+    let result = products.filter(p => {
+      const searchText = (p.cat + " " + p.style + " " + p.name).toLowerCase();
+      const typeMatch = selectedTypes.length === 0 || selectedTypes.some(t => searchText.includes(t.toLowerCase().split(" ")[0]));
+      const priceMatch = selectedPrice.length === 0 || selectedPrice.some(r => {
+        if (r === "under199") return p.price < 199; if (r === "199to499") return p.price >= 199 && p.price <= 499;
+        if (r === "500to999") return p.price >= 500 && p.price <= 999; if (r === "1000plus") return p.price >= 1000; return true;
       });
+      return typeMatch && priceMatch;
+    });
+    if (sort === "Price Low-High") result.sort((a,b) => a.price - b.price);
+    else if (sort === "Price High-Low") result.sort((a,b) => b.price - a.price);
+    else result.sort((a,b) => b.createdAt - a.createdAt);
+    return result;
+  }, [products, selectedTypes, selectedPrice, sort]);
 
-      showMessage("Product wishlist se remove ho gaya.");
-    } else {
-      updated = [...current, product];
+  useEffect(() => { setPage(1); }, [selectedTypes, selectedPrice, sort]);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const visible = filtered.slice((page - 1) * pageSize, page * pageSize);
+  const heroProduct = products.find(p => p.img);
 
-      showMessage("Product wishlist mein add ho gaya.");
-    }
-
-    try {
-      localStorage.setItem(
-        WISHLIST_STORAGE_KEY,
-        JSON.stringify(updated)
-      );
-
-      setWishlist(
-        updated.map((item) =>
-          typeof item === "object" && item !== null
-            ? getProductId(item)
-            : String(item)
-        )
-      );
-
-      window.dispatchEvent(new Event("zinoraWishlistUpdated"));
-    } catch {
-      showMessage("Wishlist browser storage mein save nahi ho paayi.", "error");
-    }
+  const makeCartItem = (p) => ({ id: p.id, name: p.name, price: p.price, image: p.img, image_url: p.img, quantity: 1, category: p.cat });
+  const addToCart = (product, buyNow = false) => {
+    const item = makeCartItem(product); const current = JSON.parse(localStorage.getItem("zinoraCart") || "[]");
+    let updated = buyNow ? [item] : current.some(c => String(c.id) === String(item.id)) ? current.map(c => String(c.id) === String(item.id) ? {...c, quantity: c.quantity+1} : c) : [...current, item];
+    localStorage.setItem("zinoraCart", JSON.stringify(updated)); window.dispatchEvent(new Event("zinoraCartUpdated")); navigate("/cart");
   };
-
-  /* =========================================================
-     ADD TO CART
-  ========================================================= */
-
-  const addToCart = (product) => {
-    const id = getProductId(product);
-
-    if (!id) {
-      showMessage("Product ID missing hai. Backend product check karein.", "error");
-      return;
-    }
-
-    try {
-      const cart = readCart();
-
-      const existingIndex = cart.findIndex(
-        (item) => getProductId(item) === id
-      );
-
-      const cartProduct = {
-        ...product,
-        id: product.id ?? product.product_id ?? id,
-        name: getProductName(product),
-        price: getProductPrice(product),
-        image: getProductImage(product),
-      };
-
-      if (existingIndex >= 0) {
-        cart[existingIndex] = {
-          ...cart[existingIndex],
-          quantity: Number(cart[existingIndex].quantity || 1) + 1,
-        };
-      } else {
-        cart.push({
-          ...cartProduct,
-          quantity: 1,
-        });
-      }
-
-      localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart));
-
-      window.dispatchEvent(new Event("zinoraCartUpdated"));
-
-      window.dispatchEvent(
-        new CustomEvent("zinora:add-to-cart", {
-          detail: cartProduct,
-        })
-      );
-
-      showMessage("Product cart mein add ho gaya.");
-    } catch (error) {
-      console.error("Cart error:", error);
-
-      showMessage("Product cart mein add nahi ho paaya.", "error");
-    }
+  const toggleWishlist = (product) => {
+    const current = JSON.parse(localStorage.getItem("zinoraWishlist") || "[]"); const exists = current.some(i => String(i.id) === String(product.id));
+    const updated = exists ? current.filter(i => String(i.id) !== String(product.id)) : [...current, makeCartItem(product)];
+    localStorage.setItem("zinoraWishlist", JSON.stringify(updated)); setFavorites(updated.map(i => i.id)); window.dispatchEvent(new Event("zinoraWishlistUpdated"));
   };
-
-  /* =========================================================
-     RENDER
-  ========================================================= */
 
   return (
-    <Box
-      sx={{
-        minHeight: "100vh",
-        bgcolor: CREAM,
-        pb: 8,
-      }}
-    >
-      {/* HERO */}
-
-      <Box
-        sx={{
-          background: `linear-gradient(120deg, ${DARK_MAROON}, ${MAROON})`,
-          color: "#fff",
-          py: { xs: 6, md: 9 },
-          textAlign: "center",
-        }}
-      >
-        <Container maxWidth="lg">
-          <Typography
-            sx={{
-              color: "#E6CB94",
-              letterSpacing: 4,
-              fontSize: 12,
-              fontWeight: 700,
-              mb: 2,
-            }}
-          >
-            DISCOVER SOMETHING DIFFERENT
-          </Typography>
-
-          <Typography
-            component="h1"
-            sx={{
-              fontFamily: "Georgia, serif",
-              fontSize: { xs: 36, md: 58 },
-              fontWeight: 500,
-              mb: 2,
-            }}
-          >
-            Other Products
-          </Typography>
-
-          <Typography
-            sx={{
-              maxWidth: 580,
-              mx: "auto",
-              color: "#F4E8E5",
-              lineHeight: 1.9,
-              fontSize: { xs: 14, md: 16 },
-            }}
-          >
-            Explore unique jewellery and accessories that add a special
-            touch to every occasion.
-          </Typography>
-
-          <Box
-            sx={{
-              width: 65,
-              height: 2,
-              bgcolor: GOLD,
-              mx: "auto",
-              mt: 3,
-            }}
-          />
-        </Container>
+    <Box sx={{ minHeight: "100vh", bgcolor: "#fbf8f5", color: "#332426" }}>
+      <Box sx={{ background: "radial-gradient(circle at 70% 30%, #641a24 0%, #390009 45%, #250006 100%)", color: "#fff", px: { xs: 2, md: 5 }, py: { xs: 4, md: 5 } }}>
+        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1.2fr 0.8fr" }, gap: 4, alignItems: "center" }}>
+          <Box>
+            <Chip label="✦ 50+ CATEGORIES • ALL JEWELLERY" size="small" sx={{ mb: 2, background: "rgba(255,255,255,.12)", color: "#fed65b", fontSize: 9 }} />
+            <Typography sx={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: { xs: 36, md: 48 }, fontWeight: 700, lineHeight: 1.05 }}>Other Products</Typography>
+            <Typography sx={{ fontFamily: "'Playfair Display', Georgia, serif", fontStyle: "italic", color: "#fed65b", fontSize: { xs: 28, md: 42 }, fontWeight: 600, mb: 2 }}>& 50+ Collections</Typography>
+            <Typography sx={{ fontSize: 13, lineHeight: 1.8, color: "#f2dddd", maxWidth: 590, mb: 3 }}>Haar, Mangalsutra, Jhumka, Payal, Nath, Maang Tikka, Bajuband, Kamarbandh, Hathphool, Cosmetics - sab kuch ek jagah.</Typography>
+            <Button variant="contained" onClick={() => document.getElementById("other-products")?.scrollIntoView({ behavior: "smooth" })} sx={{ background: "#fed65b", color: "#390009", textTransform: "none", fontWeight: 700, fontSize: 12, px: 2.5 }}>Explore All 50+ Categories ↓</Button>
+          </Box>
+          <Box sx={{ position: "relative", maxWidth: 430, mx: "auto", minHeight: { xs: 320, md: 430 }, borderRadius: 2, overflow: "hidden", background: "linear-gradient(145deg,#6b2631,#2b0007)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            {heroProduct?.img ? <Box component="img" src={heroProduct.img} alt={heroProduct.name} sx={{ width: "100%", height: { xs: 320, md: 430 }, objectFit: "cover" }} /> : <Box sx={{ textAlign: "center", p: 3 }}><Typography sx={{ fontSize: 44, color: "#fed65b" }}>✦</Typography><Typography sx={{ fontFamily: "Georgia, serif", fontSize: 24 }}>Zinora</Typography></Box>}
+            {heroProduct && <Paper elevation={0} sx={{ position: "absolute", bottom: 12, left: 12, right: 12, p: 1.5, background: "rgba(255,255,255,.96)" }}><Typography sx={{ fontSize: 12, fontWeight: 700 }}>{heroProduct.name}</Typography><Typography sx={{ fontSize: 12, fontWeight: 700, color: "#390009" }}>₹{formatPrice(heroProduct.price)}</Typography></Paper>}
+          </Box>
+        </Box>
       </Box>
 
-      <Container maxWidth="xl" sx={{ pt: 5 }}>
-        {/* ERROR MESSAGE */}
-
-        {apiError && (
-          <Alert
-            severity={products.length ? "warning" : "error"}
-            sx={{ mb: 3 }}
-            action={
-              <Button
-                color="inherit"
-                size="small"
-                onClick={loadProducts}
-              >
-                Retry
-              </Button>
-            }
-          >
-            {apiError}
-          </Alert>
-        )}
-
-        {/* HEADING + SEARCH */}
-
-        <Stack
-          direction={{ xs: "column", md: "row" }}
-          justifyContent="space-between"
-          alignItems={{ xs: "stretch", md: "center" }}
-          spacing={2}
-          sx={{ mb: 4 }}
-        >
-          <Box>
-            <Typography
-              sx={{
-                color: MAROON,
-                fontSize: 26,
-                fontFamily: "Georgia, serif",
-                fontWeight: 600,
-              }}
-            >
-              Curated For You
-            </Typography>
-
-            <Typography
-              sx={{
-                color: "#777",
-                mt: 0.5,
-                fontSize: 14,
-              }}
-            >
-              {loading
-                ? "Loading products..."
-                : `${visibleProducts.length} products to explore`}
-            </Typography>
-          </Box>
-
-          <Stack
-            direction={{ xs: "column", sm: "row" }}
-            spacing={2}
-          >
-            <TextField
-              placeholder="Search products..."
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              size="small"
-              sx={{
-                minWidth: { xs: "100%", sm: 240 },
-                bgcolor: "#fff",
-                "& .MuiOutlinedInput-root": {
-                  borderRadius: 1,
-                  "&.Mui-focused fieldset": {
-                    borderColor: MAROON,
-                  },
-                },
-              }}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon sx={{ color: MAROON }} />
-                  </InputAdornment>
-                ),
-              }}
-            />
-
-            <TextField
-              select
-              size="small"
-              value={sortBy}
-              onChange={(event) => setSortBy(event.target.value)}
-              sx={{
-                minWidth: 180,
-                bgcolor: "#fff",
-                "& .MuiOutlinedInput-root.Mui-focused fieldset": {
-                  borderColor: MAROON,
-                },
-              }}
-              aria-label="Sort products"
-            >
-              <MenuItem value="featured">Featured</MenuItem>
-              <MenuItem value="price-low">Price: Low to High</MenuItem>
-              <MenuItem value="price-high">Price: High to Low</MenuItem>
-              <MenuItem value="name">Name: A to Z</MenuItem>
-            </TextField>
-          </Stack>
-        </Stack>
-
-        {/* LOADING */}
-
-        {loading && products.length === 0 ? (
-          <Box
-            sx={{
-              py: 10,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              flexDirection: "column",
-              gap: 2,
-            }}
-          >
-            <CircularProgress sx={{ color: MAROON }} />
-
-            <Typography sx={{ color: "#777", fontSize: 13 }}>
-              Loading products from the backend...
-            </Typography>
-          </Box>
-        ) : visibleProducts.length > 0 ? (
-          /* PRODUCT GRID */
-
-          <Grid container spacing={3}>
-            {visibleProducts.map((product, index) => {
-              const id = getProductId(product) || `product-${index}`;
-
-              const productName = getProductName(product);
-              const price = getProductPrice(product);
-              const originalPrice = getOriginalPrice(product);
-              const image = getProductImage(product);
-              const category = getProductCategory(product);
-
-              const isWishlisted = wishlist.includes(id);
-
-              return (
-                <Grid
-                  item
-                  xs={12}
-                  sm={6}
-                  md={4}
-                  lg={3}
-                  key={id}
-                >
-                  <Card
-                    sx={{
-                      height: "100%",
-                      position: "relative",
-                      borderRadius: 1,
-                      boxShadow: "0 5px 24px rgba(69,16,29,0.07)",
-                      transition: "all .3s ease",
-                      "&:hover": {
-                        transform: "translateY(-6px)",
-                        boxShadow:
-                          "0 12px 30px rgba(69,16,29,0.15)",
-                      },
-                    }}
-                  >
-                    {/* IMAGE */}
-
-                    <Box
-                      sx={{
-                        position: "relative",
-                        overflow: "hidden",
-                      }}
-                    >
-                      {image ? (
-                        <CardMedia
-                          component="img"
-                          image={image}
-                          alt={productName}
-                          sx={{
-                            height: { xs: 280, md: 320 },
-                            objectFit: "cover",
-                            bgcolor: "#F0E8E0",
-                            transition: "transform .4s ease",
-                            "&:hover": {
-                              transform: "scale(1.04)",
-                            },
-                          }}
-                          onError={(event) => {
-                            event.currentTarget.style.display = "none";
-
-                            const parent = event.currentTarget.parentElement;
-
-                            if (parent && !parent.querySelector(".image-error")) {
-                              const fallback = document.createElement("div");
-
-                              fallback.className = "image-error";
-                              fallback.textContent = "Product image unavailable";
-                              fallback.style.height = "320px";
-                              fallback.style.display = "flex";
-                              fallback.style.alignItems = "center";
-                              fallback.style.justifyContent = "center";
-                              fallback.style.background = "#F0E8E0";
-                              fallback.style.color = MAROON;
-                              fallback.style.fontSize = "13px";
-
-                              parent.prepend(fallback);
-                            }
-                          }}
-                        />
-                      ) : (
-                        <Box
-                          sx={{
-                            height: { xs: 280, md: 320 },
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            textAlign: "center",
-                            p: 2,
-                            bgcolor: "#F0E8E0",
-                            color: MAROON,
-                            fontSize: 13,
-                          }}
-                        >
-                          Product image unavailable
-                        </Box>
-                      )}
-
-                      {/* WISHLIST */}
-
-                      <IconButton
-                        aria-label={
-                          isWishlisted
-                            ? "Remove from wishlist"
-                            : "Add to wishlist"
-                        }
-                        onClick={() => toggleWishlist(product)}
-                        sx={{
-                          position: "absolute",
-                          top: 12,
-                          right: 12,
-                          bgcolor: "#fff",
-                          color: isWishlisted ? MAROON : "#777",
-                          "&:hover": {
-                            bgcolor: "#F7E9EC",
-                            color: MAROON,
-                          },
-                        }}
-                      >
-                        {isWishlisted ? (
-                          <FavoriteIcon sx={{ color: MAROON }} />
-                        ) : (
-                          <FavoriteBorderIcon />
-                        )}
-                      </IconButton>
-
-                      {/* CATEGORY */}
-
-                      <Chip
-                        label={category || "Other Products"}
-                        size="small"
-                        sx={{
-                          position: "absolute",
-                          left: 12,
-                          top: 12,
-                          bgcolor: "#FFFCF6",
-                          color: MAROON,
-                          fontWeight: 600,
-                          maxWidth: "70%",
-                        }}
-                      />
+      <Container maxWidth="xl" sx={{ py: { xs: 2, md: 3 } }} id="other-products">
+        {error && <Alert severity="error" sx={{ mb: 2 }} action={<Button color="inherit" size="small" startIcon={<Refresh />} onClick={fetchProducts}>Retry</Button>}>{error}</Alert>}
+        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "260px minmax(0, 1fr)" }, gap: { xs: 2, md: 3 }, alignItems: "start" }}>
+          <Box sx={{ bgcolor: "#fff", border: "1px solid #eee3e1", borderRadius: 2, overflow: "hidden", position: { md: "sticky" }, top: 18, maxHeight: { md: "90vh" }, overflowY: { md: "auto" } }}>
+            <Box sx={{ p: 2, display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid #f0e7e5", position: "sticky", top: 0, bgcolor: "#fff", zIndex: 1 }}>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 0.8 }}><Tune sx={{ color: "#650c20", fontSize: 19 }} /><Typography sx={{ fontSize: 14, fontWeight: 900, color: "#650c20" }}>All Categories ({ALL_JEWELLERY_CATEGORIES.length}+)</Typography></Box>
+              <Button onClick={clearFilters} size="small" sx={{ fontSize: 11, color: "#8a6a36", textTransform: "none", fontWeight: 800 }}>Clear all</Button>
+            </Box>
+            <Box sx={{ px: 2, py: 1.8, borderBottom: "1px solid #f0e7e5" }}>
+              <Box component="button" onClick={() => setOpenFilter(p => p === "type" ? "" : "type")} sx={{ width: "100%", display: "flex", justifyContent: "space-between", border: 0, bgcolor: "transparent", cursor: "pointer", fontWeight: 800, fontSize: 12 }}>
+                <Box sx={{ display: "flex", gap: 0.8 }}>CATEGORY {selectedTypes.length > 0 && <Chip label={selectedTypes.length} size="small" sx={{ height: 19, fontSize: 10, bgcolor: "#f6e9eb", color: "#650c20" }} />}</Box>
+                <Box sx={{ fontSize: 20, color: "#8b6a6d" }}>{openFilter === "type" ? "−" : "+"}</Box>
+              </Box>
+              {openFilter === "type" && (
+                <Box sx={{ pt: 1.5, display: "grid", gap: 0.6 }}>
+                  {ALL_JEWELLERY_CATEGORIES.map(type => (
+                    <Box key={type} onClick={() => toggleType(type)} sx={{ display: "flex", alignItems: "center", gap: 0.7, cursor: "pointer", py: 0.2, "&:hover": { bgcolor: "#fdf6f6" }, borderRadius: 1 }}>
+                      <Checkbox size="small" checked={selectedTypes.includes(type)} sx={{ p: 0.2, "&.Mui-checked": { color: "#650c20" }, "& svg": { fontSize: 17 } }} />
+                      <Typography sx={{ fontSize: 11.5, fontWeight: selectedTypes.includes(type) ? 700 : 400 }}>{type}</Typography>
                     </Box>
+                  ))}
+                </Box>
+              )}
+            </Box>
+            <Box sx={{ px: 2, py: 1.8 }}>
+              <Box component="button" onClick={() => setOpenFilter(p => p === "price" ? "" : "price")} sx={{ width: "100%", display: "flex", justifyContent: "space-between", border: 0, bgcolor: "transparent", cursor: "pointer", fontWeight: 800, fontSize: 12 }}>
+                <Box sx={{ display: "flex", gap: 0.8 }}>PRICE {selectedPrice.length > 0 && <Chip label={selectedPrice.length} size="small" sx={{ height: 19, fontSize: 10, bgcolor: "#f6e9eb", color: "#650c20" }} />}</Box>
+                <Box sx={{ fontSize: 20, color: "#8b6a6d" }}>{openFilter === "price" ? "−" : "+"}</Box>
+              </Box>
+              {openFilter === "price" && (
+                <Box sx={{ pt: 1.5, display: "grid", gap: 0.8 }}>
+                  {[{ label: "Under ₹199", value: "under199" },{ label: "₹199 – ₹499", value: "199to499" },{ label: "₹500 – ₹999", value: "500to999" },{ label: "₹1,000 & above", value: "1000plus" }].map(r => (
+                    <Box key={r.value} onClick={() => togglePrice(r.value)} sx={{ display: "flex", alignItems: "center", gap: 0.7, cursor: "pointer" }}>
+                      <Checkbox size="small" checked={selectedPrice.includes(r.value)} sx={{ p: 0.2, "&.Mui-checked": { color: "#650c20" }, "& svg": { fontSize: 18 } }} />
+                      <Typography sx={{ fontSize: 12 }}>{r.label}</Typography>
+                    </Box>
+                  ))}
+                </Box>
+              )}
+            </Box>
+          </Box>
 
-                    {/* DETAILS */}
-
-                    <CardContent
-                      sx={{
-                        p: 2.5,
-                        display: "flex",
-                        flexDirection: "column",
-                        height: "calc(100% - 320px)",
-                      }}
-                    >
-                      <Typography
-                        sx={{
-                          color: "#777",
-                          fontSize: 11,
-                          textTransform: "uppercase",
-                          letterSpacing: 1.2,
-                          mb: 1,
-                        }}
-                      >
-                        ZINORA COLLECTION
-                      </Typography>
-
-                      <Typography
-                        sx={{
-                          color: "#321B20",
-                          fontWeight: 600,
-                          fontSize: 16,
-                          mb: 1,
-                          minHeight: 24,
-                          overflowWrap: "anywhere",
-                        }}
-                      >
-                        {productName}
-                      </Typography>
-
-                      {getProductDescription(product) && (
-                        <Typography
-                          sx={{
-                            color: "#777",
-                            fontSize: 12,
-                            lineHeight: 1.6,
-                            mb: 1.5,
-                          }}
-                        >
-                          {getProductDescription(product)}
-                        </Typography>
-                      )}
-
-                      <Stack
-                        direction="row"
-                        alignItems="center"
-                        spacing={1.5}
-                        sx={{ mb: 2, mt: "auto", flexWrap: "wrap" }}
-                      >
-                        <Typography
-                          sx={{
-                            color: MAROON,
-                            fontSize: 19,
-                            fontWeight: 700,
-                          }}
-                        >
-                          ₹{price.toLocaleString("en-IN")}
-                        </Typography>
-
-                        {originalPrice > price && (
-                          <Typography
-                            sx={{
-                              color: "#999",
-                              textDecoration: "line-through",
-                              fontSize: 13,
-                            }}
-                          >
-                            ₹{originalPrice.toLocaleString("en-IN")}
-                          </Typography>
-                        )}
-                      </Stack>
-
-                      <Button
-                        fullWidth
-                        variant="contained"
-                        startIcon={<ShoppingBagOutlinedIcon />}
-                        endIcon={<ArrowForwardIcon />}
-                        onClick={() => addToCart(product)}
-                        sx={{
-                          py: 1.2,
-                          bgcolor: MAROON,
-                          color: "#fff",
-                          textTransform: "none",
-                          fontWeight: 600,
-                          borderRadius: 1,
-                          "&:hover": {
-                            bgcolor: DARK_MAROON,
-                          },
-                        }}
-                      >
-                        Add to Bag
-                      </Button>
-                    </CardContent>
-                  </Card>
-                </Grid>
-              );
-            })}
-          </Grid>
-        ) : (
-          /* EMPTY STATE */
-
-          <Box
-            sx={{
-              textAlign: "center",
-              py: 9,
-              px: 2,
-              bgcolor: "#fff",
-              border: "1px solid #EEE2D5",
-              borderRadius: 2,
-            }}
-          >
-            <ShoppingBagOutlinedIcon
-              sx={{
-                fontSize: 55,
-                color: GOLD,
-                mb: 2,
-              }}
-            />
-
-            <Typography
-              sx={{
-                fontFamily: "Georgia, serif",
-                color: MAROON,
-                fontSize: 25,
-                mb: 1,
-              }}
-            >
-              No products found
-            </Typography>
-
-            <Typography
-              sx={{
-                color: "#777",
-                mb: 3,
-              }}
-            >
-              {search
-                ? "Try another search."
-                : "New products that do not belong to your existing categories will appear here."}
-            </Typography>
-
-            {search && (
-              <Button
-                variant="outlined"
-                onClick={() => setSearch("")}
-                sx={{
-                  color: MAROON,
-                  borderColor: MAROON,
-                  textTransform: "none",
-                }}
-              >
-                Clear Search
-              </Button>
+          <Box sx={{ minWidth: 0 }}>
+            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2, p: 1.5, bgcolor: "#fff", border: "1px solid #eee3e1", borderRadius: 2 }}>
+              <Typography sx={{ fontSize: 13, color: "#665657" }}><Box component="span" sx={{ color: "#650c20", fontWeight: 800 }}>{filtered.length}</Box> products from 50+ categories</Typography>
+              <FormControl size="small" sx={{ minWidth: 155 }}><Select value={sort} onChange={(e) => setSort(e.target.value)} sx={{ fontSize: 12, borderRadius: 1.5 }}><MenuItem value="Newest First">Newest First</MenuItem><MenuItem value="Price Low-High">Price: Low to High</MenuItem><MenuItem value="Price High-Low">Price: High to Low</MenuItem></Select></FormControl>
+            </Box>
+            {loading ? <Box sx={{ minHeight: 300, display: "grid", placeItems: "center" }}><CircularProgress sx={{ color: "#650c20" }} /></Box>
+            : visible.length === 0 ? (<Box sx={{ bgcolor: "#fff", border: "1px solid #eee3e1", borderRadius: 2, py: 8, textAlign: "center" }}><Typography sx={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 25, color: "#650c20" }}>No products found</Typography><Button onClick={clearFilters} sx={{ mt: 2, color: "#650c20" }}>Clear Filters</Button></Box>
+            ) : (
+              <>
+                <Box sx={{ display: "grid", gridTemplateColumns: { xs: "repeat(2, 1fr)", lg: "repeat(3, 1fr)", xl: "repeat(4, 1fr)" }, gap: { xs: 1.2, md: 2 } }}>
+                  {visible.map(product => (
+                    <Box key={product.id} sx={{ bgcolor: "#fff", border: "1px solid #eee4e1", borderRadius: 2.5, overflow: "hidden", display: "flex", flexDirection: "column", "&:hover": { transform: "translateY(-4px)", boxShadow: "0 12px 28px rgba(80,20,30,.10)" }, transition: "all .2s" }}>
+                      <Box sx={{ position: "relative", aspectRatio: "0.88", bgcolor: "#f4efeb" }}>
+                        {product.img ? <Box component="img" src={product.img} alt={product.name} sx={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <Box sx={{ display: "grid", placeItems: "center", height: "100%" }}>No Image</Box>}
+                        <Chip label={product.badge} size="small" sx={{ position: "absolute", top: 9, left: 9, bgcolor: "#650c20", color: "#fff", fontSize: 9, fontWeight: 800, maxWidth: "70%" }} />
+                        <IconButton onClick={() => toggleWishlist(product)} sx={{ position: "absolute", top: 8, right: 8, width: 34, height: 34, bgcolor: "#fff", color: favorites.includes(product.id) ? "#a20d32" : "#650c20" }}>
+                          {favorites.includes(product.id) ? <Favorite sx={{ fontSize: 19 }} /> : <FavoriteBorder sx={{ fontSize: 19 }} />}
+                        </IconButton>
+                      </Box>
+                      <Box sx={{ p: 1.5, flex: 1, display: "flex", flexDirection: "column" }}>
+                        <Typography sx={{ fontSize: 13, fontWeight: 800, minHeight: 36, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{product.name}</Typography>
+                        <Typography sx={{ color: "#888", fontSize: 10, mt: 0.5 }}>{product.cat}</Typography>
+                        <Typography sx={{ color: "#650c20", fontWeight: 900, fontSize: 16, mt: 1 }}>₹{formatPrice(product.price)}</Typography>
+                        <Box sx={{ display: "grid", gap: 0.8, mt: 1.5 }}>
+                          <Button variant="outlined" onClick={() => addToCart(product)} startIcon={<ShoppingCartOutlined />} sx={{ borderColor: "#650c20", color: "#650c20", borderRadius: 1.5, fontSize: 11, fontWeight: 800, textTransform: "none" }}>Add to Cart</Button>
+                          <Button variant="contained" onClick={() => addToCart(product, true)} startIcon={<LocalMallOutlined />} sx={{ bgcolor: "#650c20", borderRadius: 1.5, fontSize: 11, fontWeight: 800, textTransform: "none" }}>Order Now</Button>
+                        </Box>
+                      </Box>
+                    </Box>
+                  ))}
+                </Box>
+                {totalPages > 1 && (<Box sx={{ mt: 2, p: 1.5, bgcolor: "#fff", border: "1px solid #eee3e1", borderRadius: 2, display: "flex", justifyContent: "space-between" }}><Button disabled={page === 1} onClick={() => setPage(c => c - 1)}>Previous</Button><Typography sx={{ fontSize: 12, py: 1 }}>Page {page} of {totalPages}</Typography><Button disabled={page >= totalPages} onClick={() => setPage(c => c + 1)}>Next</Button></Box>)}
+              </>
             )}
           </Box>
-        )}
-
-        {/* FOOTER NOTE */}
-
-       
+        </Box>
       </Container>
-
-      {/* NOTIFICATION */}
-
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={2500}
-        onClose={() =>
-          setSnackbar((previous) => ({
-            ...previous,
-            open: false,
-          }))
-        }
-        anchorOrigin={{
-          vertical: "bottom",
-          horizontal: "center",
-        }}
-      >
-        <Alert
-          severity={snackbar.severity}
-          variant="filled"
-          onClose={() =>
-            setSnackbar((previous) => ({
-              ...previous,
-              open: false,
-            }))
-          }
-          sx={{ width: "100%" }}
-        >
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
     </Box>
   );
 }

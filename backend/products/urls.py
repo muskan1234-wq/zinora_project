@@ -9,6 +9,7 @@ from .views import (
     CustomerOrdersAPIView,
     AdminNotificationsAPIView,
         AdminOrdersAPIView,
+         PaymentVerifyAPIView
 
 )
 
@@ -33,6 +34,8 @@ urlpatterns = [
         CustomerAddressAPIView.as_view(),
         name="customer-addresses",
     ),
+    path('payment/verify/<int:pk>/', PaymentVerifyAPIView.as_view(), name='payment-verify'),
+path('payment/verify/', PaymentVerifyAPIView.as_view(), name='payment-verify-general'),
     path(
         "addresses/<int:pk>/",
         CustomerAddressAPIView.as_view(),

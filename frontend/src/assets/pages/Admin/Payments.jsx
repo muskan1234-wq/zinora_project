@@ -75,8 +75,10 @@ const Payments = () => {
     setError("");
 
     try {
-      const token = localStorage.getItem("zinoraAdminToken");
-
+const token = localStorage.getItem("zinoraAdminToken") || 
+              localStorage.getItem("adminToken") ||
+              localStorage.getItem("zinoraToken") ||
+              localStorage.getItem("token") || "";
       if (!token) {
         throw new Error("Admin login token nahi mila. Dobara admin login karein.");
       }

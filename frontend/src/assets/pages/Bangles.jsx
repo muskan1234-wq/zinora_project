@@ -1,1152 +1,224 @@
-
-import React, { useEffect, useMemo, useState } from "react";
-
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
-  Box,
-  Typography,
-  Button,
-  Paper,
-  FormControlLabel,
-  FormGroup,
-  Checkbox,
-  Select,
-  MenuItem,
-  FormControl,
-  Divider,
-  CircularProgress,
+  Alert, Box, Button, Checkbox, Chip, CircularProgress, Container,
+  FormControl, IconButton, MenuItem, Select, Typography, Paper,
 } from "@mui/material";
+import {
+  Favorite, FavoriteBorder, LocalMallOutlined, ShoppingCartOutlined, Tune, Refresh,
+} from "@mui/icons-material";
 
-import FilterListIcon from "@mui/icons-material/FilterList";
-import StarIcon from "@mui/icons-material/Star";
-
-const API_BASE = (
-  import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000"
-).replace(/\/+$/, "");
-
+const API_BASE = (import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000").replace(/\/+$/, "");
 const PRODUCTS_API = `${API_BASE}/api/products/`;
-const CATEGORIES_API = `${API_BASE}/api/products/categories/`;
 
-const heroImage =
-  "https://trendia.co/cdn/shop/files/55027834_3.jpg?v=1780295367";
-
-const sizeOptions = [
-  "2.2 (XS) - 54 mm",
-  "2.4 (S) - 57.2 mm",
-  "2.6 - 60.3 mm",
-  "2.8 (L) - 63.5 mm",
-  "2.10 (XL) - 66.7 mm",
-  "Free-Size / Openable",
-];
-
-const priceOptions = [
-  "Under ₹299",
-  "₹299 - ₹699",
-  "₹699 - ₹1,499",
-  "Royal Bridal ₹1,500+",
-];
-
-const getList = (data) => {
-  if (Array.isArray(data)) return data;
-
-  if (Array.isArray(data?.results)) return data.results;
-  if (Array.isArray(data?.products)) return data.products;
-  if (Array.isArray(data?.categories)) return data.categories;
-  if (Array.isArray(data?.data)) return data.data;
-
-  return [];
+const formatPrice = (value) => Number(value || 0).toLocaleString("en-IN", { maximumFractionDigits: 0 });
+const getImageUrl = (value) => {
+  if (!value) return "";
+  if (typeof value === "object") value = value.url || value.image_url || value.image || "";
+  if (!value) return "";
+  if (/^(https?:\/\/|data:|blob:)/i.test(value)) return value;
+  return `${API_BASE}/${String(value).replace(/^\/+/, "")}`;
 };
-
-const getPrice = (price) => {
-  if (typeof price === "number") return price;
-
-  return Number(String(price ?? "").replace(/[₹,\s]/g, "")) || 0;
+const getText = (v) => {
+  if (!v) return "";
+  if (typeof v === "string") return v;
+  if (typeof v === "object") return v.name || v.title || v.category_name || "";
+  return "";
 };
-
-const formatPrice = (price) =>
-  `₹${getPrice(price).toLocaleString("en-IN")}`;
-
-const getImageUrl = (image) => {
-  if (!image) return "";
-
-  if (typeof image === "object") {
-    image = image.url || image.image || image.src || "";
-  }
-
-  if (typeof image !== "string") return "";
-
-  if (/^https?:\/\//i.test(image)) return image;
-
-  return `${API_BASE}/${image.replace(/^\/+/, "")}`;
-};
-
-const normalizeProduct = (item, index) => {
-  const category =
-    typeof item.category === "object" && item.category !== null
-      ? item.category.name || item.category.title || ""
-      : item.category_name || item.category || "";
-
-  const price = getPrice(
-    item.price ?? item.selling_price ?? item.sale_price ?? 0
-  );
-
-  const oldPrice = getPrice(
-    item.old_price ??
-      item.original_price ??
-      item.mrp ??
-      item.compare_at_price ??
-      0
-  );
-
-  const discount =
-    oldPrice > price && oldPrice > 0
-      ? `${Math.round(((oldPrice - price) / oldPrice) * 100)}% OFF`
-      : "";
-
-  const rawImage =
-    item.image ||
-    item.image_url ||
-    item.product_image ||
-    item.thumbnail ||
-    (Array.isArray(item.images) ? item.images[0] : "");
-
-  const rawSizes = item.sizes || item.available_sizes || [];
-
-  return {
-    id: item.id ?? item.pk ?? index,
-    name:
-      item.name ||
-      item.product_name ||
-      item.title ||
-      "Untitled Product",
-
-    price,
-    oldPrice,
-
-    rating: Number(item.rating ?? item.average_rating ?? 0) || 0,
-
-    reviews: Number(item.reviews ?? item.review_count ?? 0) || 0,
-
-    badge: item.badge || item.tag || item.label || "",
-
-    offer: item.offer || item.discount_label || discount,
-
-    category:
-      typeof category === "string" && category.trim()
-        ? category.trim()
-        : "Uncategorized",
-
-    image: getImageUrl(rawImage),
-
-    sizes: Array.isArray(rawSizes)
-      ? rawSizes.map((size) =>
-          typeof size === "object" ? size.name || size.label || "" : size
-        )
-      : [],
-
-    isActive: item.is_active !== false,
-  };
-};
-
-function ProductCard({ product, bag, onBagToggle }) {
-  const isInBag = bag.includes(String(product.id));
-
-  return (
-    <Paper
-      elevation={0}
-      sx={{
-        border: "1px solid #ebe5df",
-        borderRadius: "4px",
-        overflow: "hidden",
-        backgroundColor: "#fff",
-        transition: "0.25s",
-        "&:hover": {
-          transform: "translateY(-4px)",
-          boxShadow: "0 5px 20px rgba(60,20,20,0.12)",
-        },
-      }}
-    >
-      <Box
-        sx={{
-          height: { xs: 160, sm: 190, md: 210 },
-          position: "relative",
-          backgroundColor: "#f5f2ed",
-          overflow: "hidden",
-        }}
-      >
-        {product.image ? (
-          <Box
-            component="img"
-            src={product.image}
-            alt={product.name}
-            loading="lazy"
-            onError={(event) => {
-              event.currentTarget.style.display = "none";
-            }}
-            sx={{
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-              display: "block",
-            }}
-          />
-        ) : (
-          <Box
-            sx={{
-              width: "100%",
-              height: "100%",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "#987c70",
-              fontSize: 11,
-              p: 2,
-              textAlign: "center",
-            }}
-          >
-            Product image not available
-          </Box>
-        )}
-
-        <Box
-          sx={{
-            position: "absolute",
-            top: 6,
-            left: 6,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "flex-start",
-            gap: 0.5,
-          }}
-        >
-          {product.badge && (
-            <Typography
-              sx={{
-                backgroundColor: "#650c18",
-                color: "#fff",
-                fontSize: 8,
-                fontWeight: 700,
-                px: 0.7,
-                py: 0.4,
-              }}
-            >
-              {product.badge}
-            </Typography>
-          )}
-
-          {product.offer && (
-            <Typography
-              sx={{
-                backgroundColor: "#d50000",
-                color: "#fff",
-                fontSize: 8,
-                fontWeight: 700,
-                px: 0.7,
-                py: 0.4,
-              }}
-            >
-              {product.offer}
-            </Typography>
-          )}
-        </Box>
-      </Box>
-
-      <Box sx={{ p: 1.3 }}>
-        <Typography
-          sx={{
-            fontSize: 12,
-            fontWeight: 600,
-            color: "#5b101c",
-            minHeight: 34,
-          }}
-        >
-          {product.name}
-        </Typography>
-
-        {product.rating > 0 && (
-          <Box
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              gap: 0.5,
-              flexWrap: "wrap",
-            }}
-          >
-            <StarIcon sx={{ fontSize: 13, color: "#d39a16" }} />
-
-            <Typography sx={{ fontSize: 10, fontWeight: 700 }}>
-              {product.rating.toFixed(1)}
-            </Typography>
-
-            {product.reviews > 0 && (
-              <Typography sx={{ fontSize: 9, color: "#777" }}>
-                ({product.reviews} reviews)
-              </Typography>
-            )}
-          </Box>
-        )}
-
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            gap: 0.7,
-            mt: 0.8,
-            flexWrap: "wrap",
-          }}
-        >
-          <Typography
-            sx={{
-              color: "#650c18",
-              fontSize: 14,
-              fontWeight: 700,
-            }}
-          >
-            {formatPrice(product.price)}
-          </Typography>
-
-          {product.oldPrice > product.price && (
-            <Typography
-              sx={{
-                color: "#999",
-                fontSize: 10,
-                textDecoration: "line-through",
-              }}
-            >
-              {formatPrice(product.oldPrice)}
-            </Typography>
-          )}
-        </Box>
-
-        {product.sizes.length > 0 && (
-          <Typography
-            sx={{
-              mt: 0.8,
-              fontSize: 9,
-              color: "#777",
-              lineHeight: 1.6,
-            }}
-          >
-            Sizes: {product.sizes.join(", ")}
-          </Typography>
-        )}
-
-        <Button
-          fullWidth
-          variant="contained"
-          onClick={() => onBagToggle(String(product.id))}
-          sx={{
-            mt: 1.5,
-            backgroundColor: isInBag ? "#fff" : "#650c18",
-            color: isInBag ? "#650c18" : "#fff",
-            border: "1px solid #650c18",
-            fontSize: 10,
-            fontWeight: 700,
-            borderRadius: "3px",
-            py: 1,
-            boxShadow: "none",
-            "&:hover": {
-              backgroundColor: isInBag ? "#f8eeee" : "#450710",
-              boxShadow: "none",
-            },
-          }}
-        >
-          {isInBag ? "REMOVE FROM BAG" : "ADD TO BAG"}
-        </Button>
-      </Box>
-    </Paper>
-  );
-}
+const getArray = (data) => (Array.isArray(data) ? data : data?.results || data?.data || []);
 
 export default function Bangles() {
+  const navigate = useNavigate();
   const [products, setProducts] = useState([]);
-  const [backendCategories, setBackendCategories] = useState([]);
-
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [reload, setReload] = useState(0);
+  const [favorites, setFavorites] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("zinoraWishlist") || "[]").map((i) => String(i.id)); } catch { return []; }
+  });
+  const [selectedTypes, setSelectedTypes] = useState([]);
+  const [selectedPrice, setSelectedPrice] = useState([]);
+  const [openFilter, setOpenFilter] = useState("type");
+  const [sort, setSort] = useState("Newest First");
+  const [page, setPage] = useState(1);
+  const pageSize = 12;
 
-  const [activeCategory, setActiveCategory] = useState(
-    "All Bangles & Kadas"
-  );
+  const fetchProducts = useCallback(async () => {
+    setLoading(true); setError("");
+    try {
+      const res = await fetch(PRODUCTS_API);
+      if (!res.ok) throw new Error(`API Error (${res.status})`);
+      const data = await res.json();
+      const all = getArray(data).map((item) => ({
+        id: item.id, 
+        name: getText(item.name) || "Bangle", 
+        price: Number(item.price || 0),
+        img: getImageUrl(item.image || item.image_url), 
+        cat: getText(item.category_name || item.category || item.category?.name || ""),
+        style: getText(item.style || ""),
+        createdAt: item.created_at ? new Date(item.created_at).getTime() : 0, 
+        badge: "NEW",
+      }));
 
-  const [sort, setSort] = useState("featured");
+      // ✅ BANGLES FILTER - Product aur Category dono check
+      const banglesOnly = all.filter(p => {
+        const cat = (p.cat || "").toLowerCase().trim();
+        const name = (p.name || "").toLowerCase();
+        const combined = `${cat} ${name}`.toLowerCase();
 
-  const [selectedSizes, setSelectedSizes] = useState([
-    "2.6 - 60.3 mm",
-    "Free-Size / Openable",
-  ]);
+        return (
+          cat.includes("bang") || // bangle, bangles
+          cat.includes("kada") || // kada, kadas
+          cat.includes("chood") || // chooda, chood
+          cat.includes("kangan") || // kangan
+          cat.includes("chudi") || // chudi
+          combined.includes("bangle") ||
+          combined.includes("kada")
+        );
+      });
 
-  const [selectedPrices, setSelectedPrices] = useState([
-    "₹299 - ₹699",
-    "₹699 - ₹1,499",
-  ]);
+      setProducts(banglesOnly); // empty hoga to Product Not Found
+      setPage(1);
+    } catch (err) { setError(err.message); } finally { setLoading(false); }
+  }, []);
 
-  const [bag, setBag] = useState([]);
+  useEffect(() => { fetchProducts(); }, [fetchProducts]);
 
-  useEffect(() => {
-    let cancelled = false;
+  const jewelleryTypes = ["Bangles","Kada","Chooda","Kangan","Gold Plated","Temple","Daily Wear"];
+  const toggleType = (type) => setSelectedTypes(prev => prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]);
+  const togglePrice = (val) => setSelectedPrice(prev => prev.includes(val) ? prev.filter(v => v !== val) : [...prev, val]);
+  const clearFilters = () => { setSelectedTypes([]); setSelectedPrice([]); setSort("Newest First"); setPage(1); };
 
-    const loadData = async () => {
-      setLoading(true);
-      setError("");
-
-      try {
-        const [productsResponse, categoriesResponse] =
-          await Promise.all([
-            fetch(PRODUCTS_API),
-            fetch(CATEGORIES_API).catch(() => null),
-          ]);
-
-        if (!productsResponse.ok) {
-          throw new Error(
-            `Products API returned HTTP ${productsResponse.status}`
-          );
-        }
-
-        const productsData = await productsResponse.json();
-
-        let categoriesData = [];
-
-        if (categoriesResponse?.ok) {
-          categoriesData = getList(await categoriesResponse.json());
-        }
-
-        const normalizedProducts = getList(productsData)
-          .filter((item) => item.is_active !== false)
-          .map(normalizeProduct);
-
-        const normalizedCategories = categoriesData
-          .filter((item) => item.is_active !== false)
-          .map((item) =>
-            typeof item === "string"
-              ? item
-              : item.name || item.title || ""
-          )
-          .filter(Boolean);
-
-        if (!cancelled) {
-          setProducts(normalizedProducts);
-          setBackendCategories(normalizedCategories);
-        }
-      } catch (err) {
-        if (!cancelled) {
-          setError(
-            err.message ||
-              "Products load nahi ho paye. Backend connection check karo."
-          );
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
-    };
-
-    loadData();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [reload]);
-
-  const categories = useMemo(() => {
-    const allNames = [
-      ...backendCategories,
-      ...products.map((product) => product.category),
-    ];
-
-    const uniqueNames = [];
-    const seen = new Set();
-
-    allNames.forEach((name) => {
-      const cleanName = String(name || "").trim();
-
-      if (!cleanName) return;
-
-      const key = cleanName.toLowerCase();
-
-      if (
-        key === "uncategorized" ||
-        key === "all bangles & kadas" ||
-        seen.has(key)
-      ) {
-        return;
-      }
-
-      seen.add(key);
-      uniqueNames.push(cleanName);
+  const filtered = useMemo(() => {
+    let result = products.filter(p => {
+      const typeMatch = selectedTypes.length === 0 || selectedTypes.some(t => (p.style + " " + p.cat + " " + p.name).toLowerCase().includes(t.toLowerCase().split(" ")[0]));
+      const priceMatch = selectedPrice.length === 0 || selectedPrice.some(r => {
+        if (r === "under199") return p.price < 199; if (r === "199to499") return p.price >= 199 && p.price <= 499;
+        if (r === "500to999") return p.price >= 500 && p.price <= 999; if (r === "1000plus") return p.price >= 1000; return true;
+      });
+      return typeMatch && priceMatch;
     });
-
-    return ["All Bangles & Kadas", ...uniqueNames];
-  }, [backendCategories, products]);
-
-  const handleBagToggle = (id) => {
-    setBag((previous) =>
-      previous.includes(id)
-        ? previous.filter((item) => item !== id)
-        : [...previous, id]
-    );
-  };
-
-  const handleSizeChange = (size) => {
-    setSelectedSizes((previous) =>
-      previous.includes(size)
-        ? previous.filter((item) => item !== size)
-        : [...previous, size]
-    );
-  };
-
-  const handlePriceChange = (price) => {
-    setSelectedPrices((previous) =>
-      previous.includes(price)
-        ? previous.filter((item) => item !== price)
-        : [...previous, price]
-    );
-  };
-
-  const resetFilters = () => {
-    setSelectedSizes([]);
-    setSelectedPrices([]);
-    setActiveCategory("All Bangles & Kadas");
-    setSort("featured");
-  };
-
-  const matchesPrice = (price) => {
-    if (selectedPrices.length === 0) return true;
-
-    const ranges = {
-      "Under ₹299": (value) => value < 299,
-      "₹299 - ₹699": (value) => value >= 299 && value <= 699,
-      "₹699 - ₹1,499": (value) => value > 699 && value <= 1499,
-      "Royal Bridal ₹1,500+": (value) => value >= 1500,
-    };
-
-    return selectedPrices.some((range) => ranges[range]?.(price));
-  };
-
-  const filteredProducts = useMemo(() => {
-    return products.filter((product) => {
-      const categoryMatch =
-        activeCategory === "All Bangles & Kadas" ||
-        product.category.toLowerCase() === activeCategory.toLowerCase();
-
-      const sizeMatch =
-        selectedSizes.length === 0 ||
-        product.sizes.some((size) => selectedSizes.includes(size));
-
-      const priceMatch = matchesPrice(product.price);
-
-      return categoryMatch && sizeMatch && priceMatch;
-    });
-  }, [products, activeCategory, selectedSizes, selectedPrices]);
-
-  const sortedProducts = useMemo(() => {
-    const result = [...filteredProducts];
-
-    if (sort === "low") {
-      result.sort((a, b) => a.price - b.price);
-    } else if (sort === "high") {
-      result.sort((a, b) => b.price - a.price);
-    } else if (sort === "rating") {
-      result.sort((a, b) => b.rating - a.rating);
-    }
-
+    if (sort === "Price Low-High") result.sort((a,b) => a.price - b.price);
+    else if (sort === "Price High-Low") result.sort((a,b) => b.price - a.price);
+    else result.sort((a,b) => b.createdAt - a.createdAt);
     return result;
-  }, [filteredProducts, sort]);
+  }, [products, selectedTypes, selectedPrice, sort]);
+
+  useEffect(() => { setPage(1); }, [selectedTypes, selectedPrice, sort]);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const visible = filtered.slice((page - 1) * pageSize, page * pageSize);
+  const heroProduct = products.find(p => p.img);
+
+  const makeCartItem = (p) => ({ id: p.id, name: p.name, price: p.price, image: p.img, image_url: p.img, quantity: 1, category: p.cat });
+  const addToCart = (product, buyNow = false) => {
+    const item = makeCartItem(product); const current = JSON.parse(localStorage.getItem("zinoraCart") || "[]");
+    let updated = buyNow ? [item] : current.some(c => String(c.id) === String(item.id)) ? current.map(c => String(c.id) === String(item.id) ? {...c, quantity: c.quantity+1} : c) : [...current, item];
+    localStorage.setItem("zinoraCart", JSON.stringify(updated)); window.dispatchEvent(new Event("zinoraCartUpdated")); navigate("/cart");
+  };
+  const toggleWishlist = (product) => {
+    const current = JSON.parse(localStorage.getItem("zinoraWishlist") || "[]");
+    const idStr = String(product.id);
+    const exists = current.some(i => String(i.id) === idStr);
+    const updated = exists ? current.filter(i => String(i.id) !== idStr) : [...current, makeCartItem(product)];
+    localStorage.setItem("zinoraWishlist", JSON.stringify(updated)); 
+    setFavorites(updated.map(i => String(i.id))); 
+    window.dispatchEvent(new Event("zinoraWishlistUpdated"));
+  };
 
   return (
-    <Box
-      sx={{
-        backgroundColor: "#faf9f7",
-        minHeight: "100vh",
-        color: "#4d1717",
-      }}
-    >
-      {/* HEADER */}
-      <Box
-        sx={{
-          px: { xs: 2, md: 5 },
-          py: 1.5,
-          backgroundColor: "#fff",
-          borderBottom: "1px solid #eee6df",
-          display: "flex",
-          alignItems: "center",
-          gap: 1,
-        }}
-      >
-        <Box
-          sx={{
-            width: 30,
-            height: 30,
-            border: "1px solid #8c6a25",
-            color: "#650c18",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontFamily: "Georgia, serif",
-            fontSize: 22,
-          }}
-        >
-          Z
-        </Box>
-
-        <Box>
-          <Typography
-            sx={{
-              fontFamily: "Georgia, serif",
-              color: "#650c18",
-              fontWeight: 600,
-              fontSize: 16,
-              letterSpacing: 2,
-              lineHeight: 1,
-            }}
-          >
-            ZINORA
-          </Typography>
-
-          <Typography
-            sx={{
-              color: "#9a731f",
-              fontSize: 7,
-              letterSpacing: 3,
-              mt: 0.5,
-            }}
-          >
-            ATELIER
-          </Typography>
+    <Box sx={{ minHeight: "100vh", bgcolor: "#fbf8f5", color: "#332426" }}>
+      <Box sx={{ background: "radial-gradient(circle at 70% 30%, #641a24 0%, #390009 45%, #250006 100%)", color: "#fff", px: { xs: 2, md: 5 }, py: { xs: 4, md: 5 } }}>
+        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1.2fr 0.8fr" }, gap: 4, alignItems: "center" }}>
+          <Box>
+            <Chip label="✦ TRADITIONAL TO MODERN BANGLES" size="small" sx={{ mb: 2, background: "rgba(255,255,255,.12)", color: "#fed65b", fontSize: 9 }} />
+            <Typography sx={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: { xs: 36, md: 48 }, fontWeight: 700 }}>Bangles, Kadas</Typography>
+            <Typography sx={{ fontFamily: "'Playfair Display', Georgia, serif", fontStyle: "italic", color: "#fed65b", fontSize: { xs: 28, md: 42 }, fontWeight: 600, mb: 2 }}>& Choodas</Typography>
+            <Typography sx={{ fontSize: 13, lineHeight: 1.8, color: "#f2dddd", maxWidth: 590, mb: 3 }}>Explore temple bangles, kadas, choodas and daily wear bangles - only bangles category.</Typography>
+            <Button variant="contained" onClick={() => document.getElementById("bangles-products")?.scrollIntoView({ behavior: "smooth" })} sx={{ background: "#fed65b", color: "#390009", textTransform: "none", fontWeight: 700, fontSize: 12, px: 2.5 }}>Explore Bangles ↓</Button>
+          </Box>
+          <Box sx={{ position: "relative", maxWidth: 430, mx: "auto", minHeight: { xs: 320, md: 430 }, borderRadius: 2, overflow: "hidden", background: "linear-gradient(145deg,#6b2631,#2b0007)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            {heroProduct?.img ? <Box component="img" src={heroProduct.img} alt={heroProduct.name} sx={{ width: "100%", height: { xs: 320, md: 430 }, objectFit: "cover" }} /> : <Box sx={{ textAlign: "center", p: 3 }}><Typography sx={{ fontSize: 44, color: "#fed65b" }}>✦</Typography><Typography sx={{ fontFamily: "Georgia, serif", fontSize: 24 }}>Zinora</Typography></Box>}
+          </Box>
         </Box>
       </Box>
 
-      {/* PAGE CONTENT */}
-      <Box sx={{ px: { xs: 2, md: 4 }, pt: 1.5, pb: 4 }}>
-        <Typography
-          sx={{ fontSize: 10, color: "#9b7a29", mb: 1.5 }}
-        >
-          Home › Jewellery › Bangles & Kadas
-        </Typography>
-
-        {/* HERO */}
-        <Box
-          sx={{
-            display: "grid",
-            gridTemplateColumns: {
-              xs: "1fr",
-              md: "1.25fr 0.75fr",
-            },
-            gap: 2,
-          }}
-        >
-          <Box
-            sx={{
-              backgroundColor: "#f6f1eb",
-              p: { xs: 2, md: 4 },
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "center",
-            }}
-          >
-            <Typography
-              sx={{
-                color: "#9a731f",
-                fontSize: 10,
-                letterSpacing: 1.5,
-                fontWeight: 700,
-              }}
-            >
-              HEIRLOOM ARTISTRY • ANTI-TARNISH FINISH
-            </Typography>
-
-            <Typography
-              component="h1"
-              sx={{
-                fontFamily: "Georgia, serif",
-                color: "#560914",
-                fontSize: { xs: 32, sm: 40, md: 47 },
-                lineHeight: 1.1,
-                mt: 1,
-              }}
-            >
-              Imperial Kadas &
-              <br />
-              Openable Bangles
-            </Typography>
-
-            <Typography
-              sx={{
-                color: "#746966",
-                fontSize: 12,
-                lineHeight: 1.8,
-                mt: 1.5,
-              }}
-            >
-              Discover traditional Rajwadi kadas, temple jewellery,
-              bridal bangles and everyday styles with timeless royal
-              elegance.
-            </Typography>
-          </Box>
-
-          <Box
-            sx={{
-              position: "relative",
-              minHeight: { xs: 230, md: 300 },
-              overflow: "hidden",
-              backgroundColor: "#eee8df",
-            }}
-          >
-            <Box
-              component="img"
-              src={heroImage}
-              alt="Zinora Royal Bangles"
-              onError={(event) => {
-                event.currentTarget.style.display = "none";
-              }}
-              sx={{
-                width: "100%",
-                height: "100%",
-                minHeight: { xs: 230, md: 300 },
-                objectFit: "cover",
-                display: "block",
-              }}
-            />
-
-            <Box
-              sx={{
-                position: "absolute",
-                bottom: 16,
-                left: 16,
-                right: 16,
-                backgroundColor: "rgba(255,255,255,0.95)",
-                p: 1.5,
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                gap: 1,
-              }}
-            >
-              <Box>
-                <Typography
-                  sx={{
-                    color: "#9a731f",
-                    fontSize: 8,
-                    fontWeight: 700,
-                    letterSpacing: 1,
-                  }}
-                >
-                  SPOTLIGHT TROUSSEAU
-                </Typography>
-
-                <Typography
-                  sx={{
-                    color: "#5b101c",
-                    fontSize: 12,
-                    fontWeight: 700,
-                    mt: 0.5,
-                  }}
-                >
-                  Explore Royal Bangles
-                </Typography>
+      <Container maxWidth="xl" sx={{ py: { xs: 2, md: 3 } }} id="bangles-products">
+        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "235px minmax(0, 1fr)" }, gap: 3, alignItems: "start" }}>
+          <Box sx={{ bgcolor: "#fff", border: "1px solid #eee3e1", borderRadius: 2, overflow: "hidden", position: { md: "sticky" }, top: 18 }}>
+            <Box sx={{ p: 2, display: "flex", justifyContent: "space-between", borderBottom: "1px solid #f0e7e5" }}>
+              <Box sx={{ display: "flex", gap: 0.8 }}><Tune sx={{ color: "#650c20", fontSize: 19 }} /><Typography sx={{ fontSize: 14, fontWeight: 900, color: "#650c20" }}>Filters</Typography></Box>
+              <Button onClick={clearFilters} size="small" sx={{ fontSize: 11, textTransform: "none", fontWeight: 800 }}>Clear all</Button>
+            </Box>
+            <Box sx={{ px: 2, py: 1.8, borderBottom: "1px solid #f0e7e5" }}>
+              <Box component="button" onClick={() => setOpenFilter(p => p === "type" ? "" : "type")} sx={{ width: "100%", display: "flex", justifyContent: "space-between", border: 0, bgcolor: "transparent", cursor: "pointer", fontWeight: 800, fontSize: 12 }}>
+                BANGLE TYPE<Box sx={{ fontSize: 20 }}>{openFilter === "type" ? "−" : "+"}</Box>
               </Box>
-
-              <Typography
-                sx={{
-                  color: "#650c18",
-                  fontSize: 11,
-                  fontWeight: 600,
-                  whiteSpace: "nowrap",
-                }}
-              >
-                ZINORA
-              </Typography>
+              {openFilter === "type" && (
+                <Box sx={{ pt: 1.5, display: "grid", gap: 0.8 }}>
+                  {jewelleryTypes.map(type => (
+                    <Box key={type} onClick={() => toggleType(type)} sx={{ display: "flex", gap: 0.7, cursor: "pointer" }}>
+                      <Checkbox size="small" checked={selectedTypes.includes(type)} sx={{ p: 0.2, "&.Mui-checked": { color: "#650c20" } }} />
+                      <Typography sx={{ fontSize: 12 }}>{type}</Typography>
+                    </Box>
+                  ))}
+                </Box>
+              )}
+            </Box>
+            <Box sx={{ px: 2, py: 1.8 }}>
+              <Box component="button" onClick={() => setOpenFilter(p => p === "price" ? "" : "price")} sx={{ width: "100%", display: "flex", justifyContent: "space-between", border: 0, bgcolor: "transparent", cursor: "pointer", fontWeight: 800, fontSize: 12 }}>
+                PRICE RANGE<Box sx={{ fontSize: 20 }}>{openFilter === "price" ? "−" : "+"}</Box>
+              </Box>
+              {openFilter === "price" && (
+                <Box sx={{ pt: 1.5, display: "grid", gap: 0.8 }}>
+                  {[{ label: "Under ₹199", value: "under199" },{ label: "₹199 – ₹499", value: "199to499" },{ label: "₹500 – ₹999", value: "500to999" },{ label: "₹1,000 & above", value: "1000plus" }].map(r => (
+                    <Box key={r.value} onClick={() => togglePrice(r.value)} sx={{ display: "flex", gap: 0.7, cursor: "pointer" }}>
+                      <Checkbox size="small" checked={selectedPrice.includes(r.value)} sx={{ p: 0.2, "&.Mui-checked": { color: "#650c20" } }} />
+                      <Typography sx={{ fontSize: 12 }}>{r.label}</Typography>
+                    </Box>
+                  ))}
+                </Box>
+              )}
             </Box>
           </Box>
-        </Box>
 
-        {/* SORTING */}
-        <Paper
-          elevation={0}
-          sx={{
-            mt: 2,
-            p: 1.5,
-            border: "1px solid #eee8e2",
-            display: "flex",
-            justifyContent: "space-between",
-            gap: 1,
-            flexWrap: "wrap",
-          }}
-        >
-          <Typography sx={{ fontSize: 11, fontWeight: 700 }}>
-            {loading ? "Loading products..." : `${sortedProducts.length} Pieces`}
-            <Box
-              component="span"
-              sx={{ color: "#aaa", mx: 1 }}
-            >
-              |
-            </Box>
-            Jaipur & Rajkot Ateliers
-          </Typography>
-
-          <FormControl size="small">
-            <Select
-              value={sort}
-              onChange={(event) => setSort(event.target.value)}
-              inputProps={{ "aria-label": "Sort products" }}
-              sx={{
-                height: 34,
-                fontSize: 11,
-                minWidth: { xs: 155, sm: 190 },
-                backgroundColor: "#fff",
-              }}
-            >
-              <MenuItem value="featured">
-                Sort: Featured & Bestsellers
-              </MenuItem>
-              <MenuItem value="low">Price: Low to High</MenuItem>
-              <MenuItem value="high">Price: High to Low</MenuItem>
-              <MenuItem value="rating">Top Rated</MenuItem>
-            </Select>
-          </FormControl>
-        </Paper>
-
-        {/* SIDEBAR + PRODUCTS */}
-        <Box
-          sx={{
-            mt: 2,
-            display: "grid",
-            gridTemplateColumns: {
-              xs: "1fr",
-              md: "220px minmax(0, 1fr)",
-            },
-            gap: 2,
-            alignItems: "start",
-          }}
-        >
-          {/* SIDEBAR */}
-          <Box
-            sx={{
-              display: "flex",
-              flexDirection: "column",
-              gap: 2,
-              minWidth: 0,
-            }}
-          >
-            {/* DYNAMIC CATEGORIES */}
-            <Paper
-              elevation={0}
-              sx={{
-                p: 1.5,
-                border: "1px solid #ebe5df",
-                backgroundColor: "#fff",
-              }}
-            >
-              <Typography
-                sx={{
-                  fontSize: 12,
-                  fontWeight: 700,
-                  color: "#5b101c",
-                  mb: 1,
-                }}
-              >
-                CATEGORIES
-              </Typography>
-
-              <Divider sx={{ mb: 1 }} />
-
-              <Box
-                sx={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 0.5,
-                }}
-              >
-                {categories.map((category) => (
-                  <Button
-                    key={category}
-                    onClick={() => setActiveCategory(category)}
-                    sx={{
-                      justifyContent: "flex-start",
-                      textAlign: "left",
-                      textTransform: "none",
-                      fontSize: 11,
-                      lineHeight: 1.5,
-                      px: 1,
-                      py: 1,
-                      borderRadius: "3px",
-                      color:
-                        activeCategory === category
-                          ? "#650c18"
-                          : "#6a3333",
-                      backgroundColor:
-                        activeCategory === category
-                          ? "#f6eceb"
-                          : "#fff",
-                      borderLeft:
-                        activeCategory === category
-                          ? "3px solid #650c18"
-                          : "3px solid transparent",
-                      "&:hover": {
-                        backgroundColor: "#f6eceb",
-                      },
-                    }}
-                  >
-                    {category}
-                  </Button>
-                ))}
-              </Box>
-            </Paper>
-
-            {/* FILTERS */}
-            <Paper
-              elevation={0}
-              sx={{
-                p: 1.5,
-                border: "1px solid #ebe5df",
-                backgroundColor: "#fff",
-              }}
-            >
-              <Box
-                sx={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  gap: 0.5,
-                }}
-              >
-                <Typography
-                  sx={{
-                    fontSize: 12,
-                    fontWeight: 700,
-                    color: "#5b101c",
-                    display: "flex",
-                    alignItems: "center",
-                  }}
-                >
-                  <FilterListIcon sx={{ fontSize: 16, mr: 0.5 }} />
-                  Filters
-                </Typography>
-
-                <Button
-                  onClick={resetFilters}
-                  size="small"
-                  sx={{
-                    fontSize: 9,
-                    color: "#9a731f",
-                    minWidth: 0,
-                  }}
-                >
-                  RESET ALL
-                </Button>
-              </Box>
-
-              <Divider sx={{ my: 1.5 }} />
-
-              {/* SIZE FILTER */}
-              <Typography
-                sx={{ fontSize: 11, fontWeight: 700, mb: 0.5 }}
-              >
-                Bangle Size
-              </Typography>
-
-              <FormGroup>
-                {sizeOptions.map((item) => (
-                  <FormControlLabel
-                    key={item}
-                    control={
-                      <Checkbox
-                        size="small"
-                        checked={selectedSizes.includes(item)}
-                        onChange={() => handleSizeChange(item)}
-                        sx={{
-                          p: 0.3,
-                          "& .MuiSvgIcon-root": { fontSize: 16 },
-                        }}
-                      />
-                    }
-                    label={
-                      <Typography sx={{ fontSize: 10 }}>
-                        {item}
-                      </Typography>
-                    }
-                    sx={{ m: 0, minHeight: 25 }}
-                  />
-                ))}
-              </FormGroup>
-
-              <Divider sx={{ my: 1.5 }} />
-
-              {/* PRICE FILTER */}
-              <Typography
-                sx={{ fontSize: 11, fontWeight: 700, mb: 0.5 }}
-              >
-                Price Range
-              </Typography>
-
-              <FormGroup>
-                {priceOptions.map((item) => (
-                  <FormControlLabel
-                    key={item}
-                    control={
-                      <Checkbox
-                        size="small"
-                        checked={selectedPrices.includes(item)}
-                        onChange={() => handlePriceChange(item)}
-                        sx={{
-                          p: 0.3,
-                          "& .MuiSvgIcon-root": { fontSize: 16 },
-                        }}
-                      />
-                    }
-                    label={
-                      <Typography sx={{ fontSize: 10 }}>
-                        {item}
-                      </Typography>
-                    }
-                    sx={{ m: 0, minHeight: 25 }}
-                  />
-                ))}
-              </FormGroup>
-            </Paper>
-          </Box>
-
-          {/* PRODUCT GRID */}
           <Box sx={{ minWidth: 0 }}>
-            {loading ? (
-              <Paper
-                elevation={0}
-                sx={{
-                  p: 5,
-                  textAlign: "center",
-                  border: "1px solid #ebe5df",
-                  backgroundColor: "#fff",
-                }}
-              >
-                <CircularProgress sx={{ color: "#650c18" }} />
-
-                <Typography sx={{ mt: 2, fontSize: 12 }}>
-                  Loading products from backend...
-                </Typography>
-              </Paper>
-            ) : error ? (
-              <Paper
-                elevation={0}
-                sx={{
-                  p: 4,
-                  textAlign: "center",
-                  border: "1px solid #ebe5df",
-                  backgroundColor: "#fff",
-                }}
-              >
-                <Typography
-                  sx={{
-                    color: "#650c18",
-                    fontFamily: "Georgia, serif",
-                    fontSize: 20,
-                  }}
-                >
-                  Unable to load products
-                </Typography>
-
-                <Typography sx={{ fontSize: 12, mt: 1 }}>
-                  {error}
-                </Typography>
-
-                <Button
-                  onClick={() => setReload((value) => value + 1)}
-                  variant="contained"
-                  sx={{
-                    mt: 2,
-                    backgroundColor: "#650c18",
-                    "&:hover": { backgroundColor: "#450710" },
-                  }}
-                >
-                  Try Again
-                </Button>
-              </Paper>
-            ) : sortedProducts.length > 0 ? (
-              <Box
-                sx={{
-                  display: "grid",
-                  gridTemplateColumns: {
-                    xs: "repeat(2, minmax(0, 1fr))",
-                    sm: "repeat(2, minmax(0, 1fr))",
-                    lg: "repeat(3, minmax(0, 1fr))",
-                  },
-                  gap: 1.5,
-                  alignContent: "start",
-                }}
-              >
-                {sortedProducts.map((product) => (
-                  <ProductCard
-                    key={product.id}
-                    product={product}
-                    bag={bag}
-                    onBagToggle={handleBagToggle}
-                  />
-                ))}
+            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2, p: 1.5, bgcolor: "#fff", border: "1px solid #eee3e1", borderRadius: 2 }}>
+              <Typography sx={{ fontSize: 13 }}><Box component="span" sx={{ color: "#650c20", fontWeight: 800 }}>{filtered.length}</Box> bangles only</Typography>
+              <FormControl size="small" sx={{ minWidth: 155 }}><Select value={sort} onChange={(e) => setSort(e.target.value)} sx={{ fontSize: 12 }}><MenuItem value="Newest First">Newest First</MenuItem><MenuItem value="Price Low-High">Low to High</MenuItem><MenuItem value="Price High-Low">High to Low</MenuItem></Select></FormControl>
+            </Box>
+            {loading ? <Box sx={{ minHeight: 300, display: "grid", placeItems: "center" }}><CircularProgress sx={{ color: "#650c20" }} /></Box>
+            : visible.length === 0 ? (
+              <Box sx={{ bgcolor: "#fff", border: "1px solid #eee3e1", borderRadius: 2, py: 8, textAlign: "center" }}>
+                <Typography sx={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 26, color: "#650c20", fontWeight: 700 }}>Product Not Found</Typography>
+                <Typography sx={{ fontSize: 13, color: "#777", mt: 1 }}>No products found for <b>Bangles / Kada</b> category</Typography>
+                <Typography sx={{ fontSize: 11, color: "#999", mt: 1 }}>Admin backend me Category = Bangles ya Kada select karo</Typography>
               </Box>
             ) : (
-              <Paper
-                elevation={0}
-                sx={{
-                  p: 4,
-                  textAlign: "center",
-                  border: "1px solid #ebe5df",
-                  backgroundColor: "#fff",
-                }}
-              >
-                <Typography
-                  sx={{
-                    color: "#650c18",
-                    fontFamily: "Georgia, serif",
-                    fontSize: 20,
-                  }}
-                >
-                  No designs found
-                </Typography>
-
-                <Typography sx={{ fontSize: 12, mt: 1 }}>
-                  Try changing your category, size, or price filters.
-                  If your database has no matching products, add them
-                  from the admin dashboard.
-                </Typography>
-
-                <Button
-                  onClick={resetFilters}
-                  sx={{ mt: 1, color: "#650c18" }}
-                >
-                  Clear Filters
-                </Button>
-              </Paper>
+              <Box sx={{ display: "grid", gridTemplateColumns: { xs: "repeat(2, 1fr)", lg: "repeat(3, 1fr)", xl: "repeat(4, 1fr)" }, gap: 2 }}>
+                {visible.map(product => (
+                  <Box key={product.id} sx={{ bgcolor: "#fff", border: "1px solid #eee4e1", borderRadius: 2.5, overflow: "hidden" }}>
+                    <Box sx={{ position: "relative", aspectRatio: "0.88", bgcolor: "#f4efeb" }}>
+                      {product.img ? <Box component="img" src={product.img} alt={product.name} sx={{ width: "100%", height: "100%", objectFit: "cover" }} /> : null}
+                      <Chip label="NEW" size="small" sx={{ position: "absolute", top: 9, left: 9, bgcolor: "#650c20", color: "#fff", fontSize: 9 }} />
+                      <IconButton onClick={() => toggleWishlist(product)} sx={{ position: "absolute", top: 8, right: 8, width: 34, height: 34, bgcolor: "#fff", color: favorites.includes(String(product.id)) ? "#a20d32" : "#650c20" }}>
+                        {favorites.includes(String(product.id)) ? <Favorite sx={{ fontSize: 19 }} /> : <FavoriteBorder sx={{ fontSize: 19 }} />}
+                      </IconButton>
+                    </Box>
+                    <Box sx={{ p: 1.5 }}>
+                      <Typography sx={{ fontSize: 13, fontWeight: 800, minHeight: 36, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{product.name}</Typography>
+                      <Typography sx={{ color: "#650c20", fontWeight: 900, fontSize: 16, mt: 1 }}>₹{formatPrice(product.price)}</Typography>
+                      <Box sx={{ display: "grid", gap: 0.8, mt: 1.5 }}>
+                        <Button variant="outlined" onClick={() => addToCart(product)} startIcon={<ShoppingCartOutlined />} sx={{ borderColor: "#650c20", color: "#650c20", borderRadius: 1.5, fontSize: 11, fontWeight: 800, textTransform: "none" }}>Add to Cart</Button>
+                        <Button variant="contained" onClick={() => addToCart(product, true)} startIcon={<LocalMallOutlined />} sx={{ bgcolor: "#650c20", borderRadius: 1.5, fontSize: 11, fontWeight: 800, textTransform: "none" }}>Order Now</Button>
+                      </Box>
+                    </Box>
+                  </Box>
+                ))}
+              </Box>
             )}
           </Box>
         </Box>
-
-        {/* BAG COUNT */}
-        <Box
-          sx={{
-            position: "fixed",
-            right: 16,
-            bottom: 16,
-            zIndex: 10,
-          }}
-        >
-          {bag.length > 0 && (
-            <Paper
-              elevation={4}
-              sx={{
-                px: 2,
-                py: 1.2,
-                backgroundColor: "#650c18",
-                color: "#fff",
-                borderRadius: "4px",
-              }}
-            >
-              <Typography sx={{ fontSize: 12, fontWeight: 700 }}>
-                Bag: {bag.length} {bag.length === 1 ? "item" : "items"}
-              </Typography>
-            </Paper>
-          )}
-        </Box>
-      </Box>
+      </Container>
     </Box>
   );
 }
