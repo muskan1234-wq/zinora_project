@@ -8,29 +8,6 @@ Our goal is to provide customers with a smooth online shopping experience while 
 
 ---
 
-## 📌 Table of Contents
-
-* [Project Overview](#-project-overview)
-* [Project Objectives](#-project-objectives)
-* [Key Features](#-key-features)
-* [Customer Website](#-customer-website)
-* [Admin Dashboard](#-admin-dashboard)
-* [Technology Stack](#️-technology-stack)
-* [Application Architecture](#️-application-architecture)
-* [Project Structure](#-project-structure)
-* [Prerequisites](#-prerequisites)
-* [Installation and Setup](#️-installation-and-setup)
-* [Database Configuration](#️-database-configuration)
-* [Running the Application](#️-running-the-application)
-* [Authentication and Security](#-authentication-and-security)
-* [GitHub Achievements](#-github-achievements)
-* [Team Members](#-team-members)
-* [Future Enhancements](#-future-enhancements)
-* [Learning Outcomes](#-learning-outcomes)
-* [Repository](#-repository)
-
----
-
 ## 🚀 Project Overview
 
 **Project Name:** ZINORA
