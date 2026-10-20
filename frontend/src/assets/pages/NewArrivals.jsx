@@ -1,1536 +1,221 @@
-
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
-  Alert,
-  Box,
-  Container,
-  Typography,
-  Chip,
-  IconButton,
-  Select,
-  MenuItem,
-  FormControl,
-  Checkbox,
-  Button,
-  Switch,
-  CircularProgress,
+  Alert, Box, Button, Checkbox, Chip, CircularProgress, Container,
+  FormControl, IconButton, MenuItem, Select, Typography, Paper,
 } from "@mui/material";
-
 import {
-  FavoriteBorder,
-  Favorite,
-  GridView,
-  ViewComfy,
-  ChevronRight,
-  Star,
-  LocalShippingOutlined,
-  VerifiedOutlined,
-  SecurityOutlined,
-  HandshakeOutlined,
-  ArrowForward,
-  Refresh,
+  Favorite, FavoriteBorder, LocalMallOutlined, ShoppingCartOutlined, Tune, Refresh,
 } from "@mui/icons-material";
 
-/*
-=========================================================
-API CONFIGURATION
-=========================================================
-Django backend:
-http://127.0.0.1:8000
-
-Products:
-GET /api/products/
-
-Categories:
-GET /api/categories/
-=========================================================
-*/
-const API_BASE = (
-  import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000"
-).replace(/\/+$/, "");
-
+const API_BASE = (import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000").replace(/\/+$/, "");
 const PRODUCTS_API = `${API_BASE}/api/products/`;
-const CATEGORIES_API = `${API_BASE}/api/products/categories/`;
 
-const quickFilters = [
-  "Just Dropped",
-  "Under ₹299",
-  "Festive Polki",
-  "Anti-Tarnish Dailywear",
-  "Temple Jewels",
-];
-
-const formatPrice = (value) =>
-  Number(value || 0).toLocaleString("en-IN", {
-    maximumFractionDigits: 2,
-  });
-
-const getDiscount = (price, originalPrice) => {
-  const current = Number(price || 0);
-  const original = Number(originalPrice || 0);
-
-  if (!original || original <= current) return 0;
-
-  return Math.round(((original - current) / original) * 100);
+const formatPrice = (v) => Number(v || 0).toLocaleString("en-IN", { maximumFractionDigits: 0 });
+const getImageUrl = (value) => {
+  if (!value) return "";
+  if (typeof value === "object") value = value.url || value.image_url || value.image || "";
+  if (!value) return "";
+  if (/^(https?:\/\/|data:|blob:)/i.test(value)) return value;
+  return `${API_BASE}/${String(value).replace(/^\/+/, "")}`;
 };
+const getText = (v) => (typeof v === "string" ? v : v?.name || "");
+const getArray = (data) => (Array.isArray(data) ? data : data?.results || data?.data || []);
 
-const getImageUrl = (product) => {
-  const image = product?.image_url || product?.image;
-
-  if (!image) return "";
-
-  if (typeof image === "object") {
-    return image.url || image.image_url || "";
-  }
-
-  if (/^(https?:\/\/|data:|blob:)/i.test(image)) {
-    return image;
-  }
-
-  return `${API_BASE}/${String(image).replace(/^\/+/, "")}`;
-};
-
-const getProductCategory = (product) =>
-  product.category_name ||
-  product.category?.name ||
-  product.category_detail?.name ||
-  (typeof product.category === "string" ? product.category : "");
-
-const normalizeProduct = (product) => {
-  const price = Number(product.price || 0);
-  const originalPrice =
-    product.original_price === null ||
-    product.original_price === undefined ||
-    product.original_price === ""
-      ? null
-      : Number(product.original_price);
-
-  return {
-    ...product,
-    id: product.id,
-    name: product.name || "Untitled Product",
-    desc: product.description || "",
-    price,
-    old: originalPrice,
-    discount: getDiscount(price, originalPrice),
-    cat: getProductCategory(product),
-    img: getImageUrl(product),
-    badge: product.is_new_arrival
-      ? "NEW ARRIVAL"
-      : product.is_featured
-        ? "FEATURED"
-        : "",
-    stock: Number(product.stock_quantity || 0),
-    createdAt: product.created_at
-      ? new Date(product.created_at).getTime()
-      : 0,
-  };
-};
-
-const unwrapResults = (data) => {
-  if (Array.isArray(data)) return data;
-  if (Array.isArray(data?.results)) return data.results;
-  if (Array.isArray(data?.data)) return data.data;
-  return [];
-};
-
-/*
-=========================================================
-MAIN COMPONENT
-=========================================================
-*/
-
-function NewArrivals() {
+export default function NewArrivals() {
+  const navigate = useNavigate();
   const [products, setProducts] = useState([]);
-  const [categories, setCategories] = useState([]);
-
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-
-  const [favorites, setFavorites] = useState([]);
-  const [activeFilter, setActiveFilter] = useState("Just Dropped");
+  const [favorites, setFavorites] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("zinoraWishlist") || "[]").map((i) => String(i.id)); } catch { return []; }
+  });
+  const [selectedTypes, setSelectedTypes] = useState([]);
+  const [selectedPrice, setSelectedPrice] = useState([]);
+  const [openFilter, setOpenFilter] = useState("type");
   const [sort, setSort] = useState("Newest First");
-  const [columns, setColumns] = useState(4);
-
-  const [selectedCategories, setSelectedCategories] = useState([]);
-  const [selectedPriceRanges, setSelectedPriceRanges] = useState([]);
-  const [shippingOnly, setShippingOnly] = useState(false);
-
   const [page, setPage] = useState(1);
   const pageSize = 12;
 
   const fetchProducts = useCallback(async () => {
-    setLoading(true);
-    setError("");
-
+    setLoading(true); setError("");
     try {
-      const [productsResponse, categoriesResponse] = await Promise.all([
-        fetch(PRODUCTS_API),
-        fetch(CATEGORIES_API),
-      ]);
+      const res = await fetch(PRODUCTS_API);
+      if (!res.ok) throw new Error(`API Error (${res.status})`);
+      const data = await res.json();
+      const all = getArray(data).map((item) => ({
+        id: item.id, 
+        name: getText(item.name) || "New Arrival", 
+        price: Number(item.price || 0),
+        img: getImageUrl(item.image || item.image_url), 
+        cat: getText(item.category_name || item.category || item.category?.name || ""),
+        style: getText(item.style || ""),
+        tag: getText(item.tag || item.tags || ""),
+        is_new: item.is_new_arrival || item.is_new || false,
+        createdAt: item.created_at ? new Date(item.created_at).getTime() : 0, 
+        badge: "NEW",
+      }));
 
-      if (!productsResponse.ok) {
-        throw new Error(
-          `Products API error (${productsResponse.status}).`
+      // ✅ SIRF NEW ARRIVALS FILTER - YEHI MAIN FIX HAI
+      const newArrivalsOnly = all.filter(p => {
+        const t = `${p.cat} ${p.style} ${p.tag} ${p.name}`.toLowerCase();
+        return (
+          p.is_new === true || // agar backend me is_new_arrival flag hai
+          t.includes("new arrival") ||
+          t.includes("new-arrival") ||
+          t.includes("newarrivals") ||
+          p.cat.toLowerCase() === "new arrivals" ||
+          p.cat.toLowerCase() === "new arrival"
         );
-      }
+      });
 
-      if (!categoriesResponse.ok) {
-        throw new Error(
-          `Categories API error (${categoriesResponse.status}).`
-        );
-      }
-
-      const productsData = await productsResponse.json();
-      const categoriesData = await categoriesResponse.json();
-
-      const productList = unwrapResults(productsData)
-        .filter(
-          (product) =>
-            product.is_active === true &&
-            product.is_new_arrival === true
-        )
-        .map(normalizeProduct);
-
-      const categoryList = unwrapResults(categoriesData).filter(
-        (category) => category.is_active === true
-      );
-
-      setProducts(productList);
-      setCategories(categoryList);
+      // Newest first
+      newArrivalsOnly.sort((a,b) => b.createdAt - a.createdAt);
+      setProducts(newArrivalsOnly);
       setPage(1);
-    } catch (err) {
-      console.error("New Arrivals API error:", err);
-
-      setError(
-        `${err.message} Please ensure Django is running and the API URLs are correct.`
-      );
-    } finally {
-      setLoading(false);
-    }
+    } catch (err) { setError(err.message); } finally { setLoading(false); }
   }, []);
 
-  useEffect(() => {
-    fetchProducts();
-  }, [fetchProducts]);
+  useEffect(() => { fetchProducts(); }, [fetchProducts]);
 
-  const toggleFavorite = (id) => {
-    setFavorites((current) =>
-      current.includes(id)
-        ? current.filter((item) => item !== id)
-        : [...current, id]
-    );
-  };
+  const jewelleryTypes = ["Necklace","Earrings","Bangles","Rings","Bridal Set","Choker","Jhumka"];
+  const toggleType = (type) => setSelectedTypes(prev => prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]);
+  const togglePrice = (val) => setSelectedPrice(prev => prev.includes(val) ? prev.filter(v => v !== val) : [...prev, val]);
+  const clearFilters = () => { setSelectedTypes([]); setSelectedPrice([]); setSort("Newest First"); setPage(1); };
 
-  const toggleCategory = (categoryName) => {
-    setSelectedCategories((current) =>
-      current.includes(categoryName)
-        ? current.filter((item) => item !== categoryName)
-        : [...current, categoryName]
-    );
-
-    setPage(1);
-  };
-
-  const togglePriceRange = (range) => {
-    setSelectedPriceRanges((current) =>
-      current.includes(range)
-        ? current.filter((item) => item !== range)
-        : [...current, range]
-    );
-
-    setPage(1);
-  };
-
-  const clearFilters = () => {
-    setActiveFilter("Just Dropped");
-    setSelectedCategories([]);
-    setSelectedPriceRanges([]);
-    setShippingOnly(false);
-    setSort("Newest First");
-    setPage(1);
-  };
-
-  const filteredProducts = useMemo(() => {
-    let result = [...products];
-
-    if (activeFilter === "Under ₹299") {
-      result = result.filter((product) => product.price <= 299);
-    }
-
-    if (activeFilter === "Festive Polki") {
-      result = result.filter(
-        (product) =>
-          /polki|bridal|festive|kundan/i.test(
-            `${product.name} ${product.desc} ${product.cat}`
-          )
-      );
-    }
-
-    if (activeFilter === "Anti-Tarnish Dailywear") {
-      result = result.filter((product) =>
-        /anti.?tarnish|daily|everyday|waterproof/i.test(
-          `${product.name} ${product.desc}`
-        )
-      );
-    }
-
-    if (activeFilter === "Temple Jewels") {
-      result = result.filter((product) =>
-        /temple|haram|heritage/i.test(
-          `${product.name} ${product.desc} ${product.cat}`
-        )
-      );
-    }
-
-    if (selectedCategories.length > 0) {
-      result = result.filter((product) =>
-        selectedCategories.includes(product.cat)
-      );
-    }
-
-    if (selectedPriceRanges.length > 0) {
-      result = result.filter((product) =>
-        selectedPriceRanges.some((range) => {
-          if (range === "under199") return product.price < 199;
-          if (range === "199to499")
-            return product.price >= 199 && product.price <= 499;
-          if (range === "499to999")
-            return product.price > 499 && product.price <= 999;
-          if (range === "999plus") return product.price > 999;
-          return true;
-        })
-      );
-    }
-
-    if (shippingOnly) {
-      result = result.filter((product) => product.stock > 0);
-    }
-
-    if (sort === "Price Low-High") {
-      result.sort((a, b) => a.price - b.price);
-    } else if (sort === "Price High-Low") {
-      result.sort((a, b) => b.price - a.price);
-    } else if (sort === "Newest First") {
-      result.sort((a, b) => b.createdAt - a.createdAt);
-    }
-
+  const filtered = useMemo(() => {
+    let result = products.filter(p => {
+      const typeMatch = selectedTypes.length === 0 || selectedTypes.some(t => (p.style + " " + p.cat + " " + p.name).toLowerCase().includes(t.toLowerCase()));
+      const priceMatch = selectedPrice.length === 0 || selectedPrice.some(r => {
+        if (r === "under199") return p.price < 199; if (r === "199to499") return p.price >= 199 && p.price <= 499;
+        if (r === "500to999") return p.price >= 500 && p.price <= 999; if (r === "1000plus") return p.price >= 1000; return true;
+      });
+      return typeMatch && priceMatch;
+    });
+    if (sort === "Price Low-High") result.sort((a,b) => a.price - b.price);
+    else if (sort === "Price High-Low") result.sort((a,b) => b.price - a.price);
+    else result.sort((a,b) => b.createdAt - a.createdAt);
     return result;
-  }, [
-    products,
-    activeFilter,
-    selectedCategories,
-    selectedPriceRanges,
-    shippingOnly,
-    sort,
-  ]);
+  }, [products, selectedTypes, selectedPrice, sort]);
 
-  useEffect(() => {
-    setPage(1);
-  }, [activeFilter, sort, selectedCategories, selectedPriceRanges, shippingOnly]);
+  useEffect(() => { setPage(1); }, [selectedTypes, selectedPrice, sort]);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const visible = filtered.slice((page - 1) * pageSize, page * pageSize);
+  const heroProduct = products.find(p => p.img);
 
-  const totalPages = Math.max(
-    1,
-    Math.ceil(filteredProducts.length / pageSize)
-  );
-
-  const visibleProducts = filteredProducts.slice(
-    (page - 1) * pageSize,
-    page * pageSize
-  );
+  const makeCartItem = (p) => ({ id: p.id, name: p.name, price: p.price, image: p.img, image_url: p.img, quantity: 1, category: p.cat });
+  const addToCart = (product, buyNow = false) => {
+    const item = makeCartItem(product); const current = JSON.parse(localStorage.getItem("zinoraCart") || "[]");
+    let updated = buyNow ? [item] : current.some(c => String(c.id) === String(item.id)) ? current.map(c => String(c.id) === String(item.id) ? {...c, quantity: c.quantity+1} : c) : [...current, item];
+    localStorage.setItem("zinoraCart", JSON.stringify(updated)); window.dispatchEvent(new Event("zinoraCartUpdated")); navigate("/cart");
+  };
+  const toggleWishlist = (product) => {
+    const current = JSON.parse(localStorage.getItem("zinoraWishlist") || "[]");
+    const idStr = String(product.id);
+    const exists = current.some(i => String(i.id) === idStr);
+    const updated = exists ? current.filter(i => String(i.id) !== idStr) : [...current, makeCartItem(product)];
+    localStorage.setItem("zinoraWishlist", JSON.stringify(updated)); 
+    setFavorites(updated.map(i => String(i.id))); 
+    window.dispatchEvent(new Event("zinoraWishlistUpdated"));
+  };
 
   return (
-    <Box
-      sx={{
-        backgroundColor: "#fbf9f6",
-        color: "#1b1c1a",
-        minHeight: "100vh",
-        fontFamily: "'Plus Jakarta Sans', Arial, sans-serif",
-      }}
-    >
-      <HeroSection />
-
-      <FilterBar
-        activeFilter={activeFilter}
-        setActiveFilter={setActiveFilter}
-        sort={sort}
-        setSort={setSort}
-        columns={columns}
-        setColumns={setColumns}
-        productCount={filteredProducts.length}
-      />
-
-      <Container maxWidth="xl" sx={{ py: 2 }}>
-        <Box
-          sx={{
-            display: "grid",
-            gridTemplateColumns: {
-              xs: "1fr",
-              lg: "205px minmax(0, 1fr)",
-            },
-            gap: 2,
-          }}
-        >
-          <Sidebar
-            categories={categories}
-            selectedCategories={selectedCategories}
-            toggleCategory={toggleCategory}
-            selectedPriceRanges={selectedPriceRanges}
-            togglePriceRange={togglePriceRange}
-            shippingOnly={shippingOnly}
-            setShippingOnly={setShippingOnly}
-            clearFilters={clearFilters}
-          />
-
+    <Box sx={{ minHeight: "100vh", bgcolor: "#fbf8f5", color: "#332426" }}>
+      <Box sx={{ background: "radial-gradient(circle at 70% 30%, #641a24 0%, #390009 45%, #250006 100%)", color: "#fff", px: { xs: 2, md: 5 }, py: { xs: 4, md: 5 } }}>
+        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1.2fr 0.8fr" }, gap: 4, alignItems: "center" }}>
           <Box>
-            {error && (
-              <Alert
-                severity="error"
-                sx={{ mb: 2, alignItems: "center" }}
-                action={
-                  <Button
-                    color="inherit"
-                    size="small"
-                    startIcon={<Refresh />}
-                    onClick={fetchProducts}
-                  >
-                    Retry
-                  </Button>
-                }
-              >
-                {error}
-              </Alert>
-            )}
+            <Chip label="✦ FRESH DROP • JUST ARRIVED" size="small" sx={{ mb: 2, background: "rgba(255,255,255,.12)", color: "#fed65b", fontSize: 9 }} />
+            <Typography sx={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: { xs: 36, md: 48 }, fontWeight: 700 }}>New Arrivals</Typography>
+            <Typography sx={{ fontFamily: "'Playfair Display', Georgia, serif", fontStyle: "italic", color: "#fed65b", fontSize: { xs: 28, md: 42 }, fontWeight: 600, mb: 2 }}>& Latest Drops</Typography>
+            <Typography sx={{ fontSize: 13, lineHeight: 1.8, color: "#f2dddd", maxWidth: 590, mb: 3 }}>Only admin added New Arrivals category products will show here. Rings/Necklace won't come.</Typography>
+            <Button variant="contained" onClick={() => document.getElementById("new-products")?.scrollIntoView({ behavior: "smooth" })} sx={{ background: "#fed65b", color: "#390009", textTransform: "none", fontWeight: 700, fontSize: 12, px: 2.5 }}>Explore New Arrivals ↓</Button>
+          </Box>
+          <Box sx={{ position: "relative", maxWidth: 430, mx: "auto", minHeight: { xs: 320, md: 430 }, borderRadius: 2, overflow: "hidden", background: "linear-gradient(145deg,#6b2631,#2b0007)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            {heroProduct?.img ? <Box component="img" src={heroProduct.img} alt={heroProduct.name} sx={{ width: "100%", height: { xs: 320, md: 430 }, objectFit: "cover" }} /> : <Box sx={{ textAlign: "center", p: 3 }}><Typography sx={{ fontSize: 44, color: "#fed65b" }}>✦</Typography><Typography sx={{ fontFamily: "Georgia, serif", fontSize: 24 }}>Zinora</Typography></Box>}
+          </Box>
+        </Box>
+      </Box>
 
-            {loading ? (
-              <Box
-                sx={{
-                  minHeight: 300,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexDirection: "column",
-                  gap: 2,
-                }}
-              >
-                <CircularProgress sx={{ color: "#390009" }} />
-                <Typography fontSize={13} color="#877272">
-                  Loading Zinora collections...
-                </Typography>
+      <Container maxWidth="xl" sx={{ py: { xs: 2, md: 3 } }} id="new-products">
+        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "235px minmax(0, 1fr)" }, gap: 3, alignItems: "start" }}>
+          <Box sx={{ bgcolor: "#fff", border: "1px solid #eee3e1", borderRadius: 2, overflow: "hidden", position: { md: "sticky" }, top: 18 }}>
+            <Box sx={{ p: 2, display: "flex", justifyContent: "space-between", borderBottom: "1px solid #f0e7e5" }}>
+              <Box sx={{ display: "flex", gap: 0.8 }}><Tune sx={{ color: "#650c20", fontSize: 19 }} /><Typography sx={{ fontSize: 14, fontWeight: 900, color: "#650c20" }}>Filters</Typography></Box>
+              <Button onClick={clearFilters} size="small" sx={{ fontSize: 11, color: "#8a6a36", textTransform: "none", fontWeight: 800 }}>Clear all</Button>
+            </Box>
+            <Box sx={{ px: 2, py: 1.8, borderBottom: "1px solid #f0e7e5" }}>
+              <Box component="button" onClick={() => setOpenFilter(p => p === "type" ? "" : "type")} sx={{ width: "100%", display: "flex", justifyContent: "space-between", border: 0, bgcolor: "transparent", cursor: "pointer", fontWeight: 800, fontSize: 12 }}>
+                CATEGORY<Box sx={{ fontSize: 20 }}>{openFilter === "type" ? "−" : "+"}</Box>
               </Box>
-            ) : !error && visibleProducts.length === 0 ? (
-              <Box
-                sx={{
-                  backgroundColor: "#fff",
-                  border: "1px solid #e5dfda",
-                  py: 7,
-                  px: 2,
-                  textAlign: "center",
-                }}
-              >
-                <Typography
-                  sx={{
-                    fontFamily: "'Playfair Display', Georgia, serif",
-                    fontSize: 25,
-                    color: "#390009",
-                  }}
-                >
-                  No products found
-                </Typography>
+              {openFilter === "type" && (
+                <Box sx={{ pt: 1.5, display: "grid", gap: 0.8 }}>
+                  {jewelleryTypes.map(type => (
+                    <Box key={type} onClick={() => toggleType(type)} sx={{ display: "flex", gap: 0.7, cursor: "pointer" }}>
+                      <Checkbox size="small" checked={selectedTypes.includes(type)} sx={{ p: 0.2, "&.Mui-checked": { color: "#650c20" } }} />
+                      <Typography sx={{ fontSize: 12 }}>{type}</Typography>
+                    </Box>
+                  ))}
+                </Box>
+              )}
+            </Box>
+            <Box sx={{ px: 2, py: 1.8 }}>
+              <Box component="button" onClick={() => setOpenFilter(p => p === "price" ? "" : "price")} sx={{ width: "100%", display: "flex", justifyContent: "space-between", border: 0, bgcolor: "transparent", cursor: "pointer", fontWeight: 800, fontSize: 12 }}>
+                PRICE RANGE<Box sx={{ fontSize: 20 }}>{openFilter === "price" ? "−" : "+"}</Box>
+              </Box>
+              {openFilter === "price" && (
+                <Box sx={{ pt: 1.5, display: "grid", gap: 0.8 }}>
+                  {[{ label: "Under ₹199", value: "under199" },{ label: "₹199 – ₹499", value: "199to499" },{ label: "₹500 – ₹999", value: "500to999" },{ label: "₹1,000 & above", value: "1000plus" }].map(r => (
+                    <Box key={r.value} onClick={() => togglePrice(r.value)} sx={{ display: "flex", gap: 0.7, cursor: "pointer" }}>
+                      <Checkbox size="small" checked={selectedPrice.includes(r.value)} sx={{ p: 0.2, "&.Mui-checked": { color: "#650c20" } }} />
+                      <Typography sx={{ fontSize: 12 }}>{r.label}</Typography>
+                    </Box>
+                  ))}
+                </Box>
+              )}
+            </Box>
+          </Box>
 
-                <Typography
-                  sx={{ color: "#877272", fontSize: 12, mt: 1 }}
-                >
-                  No active New Arrivals match these filters.
-                </Typography>
-
-                <Button
-                  onClick={clearFilters}
-                  sx={{
-                    mt: 2,
-                    color: "#390009",
-                    textTransform: "none",
-                  }}
-                >
-                  Clear Filters
-                </Button>
+          <Box sx={{ minWidth: 0 }}>
+            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2, p: 1.5, bgcolor: "#fff", border: "1px solid #eee3e1", borderRadius: 2 }}>
+              <Typography sx={{ fontSize: 13 }}><Box component="span" sx={{ color: "#650c20", fontWeight: 800 }}>{filtered.length}</Box> new products (only New Arrivals)</Typography>
+              <FormControl size="small" sx={{ minWidth: 155 }}><Select value={sort} onChange={(e) => setSort(e.target.value)} sx={{ fontSize: 12 }}><MenuItem value="Newest First">Newest First</MenuItem><MenuItem value="Price Low-High">Low to High</MenuItem><MenuItem value="Price High-Low">High to Low</MenuItem></Select></FormControl>
+            </Box>
+            {loading ? <Box sx={{ minHeight: 300, display: "grid", placeItems: "center" }}><CircularProgress sx={{ color: "#650c20" }} /></Box>
+            : visible.length === 0 ? (
+              <Box sx={{ bgcolor: "#fff", border: "1px solid #eee3e1", borderRadius: 2, py: 8, textAlign: "center" }}>
+                <Typography sx={{ fontSize: 20, fontWeight: 800, color: "#650c20" }}>No New Arrivals Found</Typography>
+                <Typography sx={{ fontSize: 12, color: "#777", mt: 1 }}>Admin backend me category = "New Arrivals" select karke product add karo</Typography>
+                <Typography sx={{ fontSize: 11, color: "#999", mt: 0.5 }}>Rings/Necklace/Choker is page pe nahi ayenge</Typography>
               </Box>
             ) : (
               <>
-                <Box
-                  sx={{
-                    display: "grid",
-                    gridTemplateColumns: {
-                      xs: "repeat(2, minmax(0, 1fr))",
-                      sm: `repeat(${columns}, minmax(0, 1fr))`,
-                    },
-                    gap: 1.1,
-                  }}
-                >
-                  {visibleProducts.map((product) => (
-                    <ProductCard
-                      key={product.id}
-                      product={product}
-                      favorite={favorites.includes(product.id)}
-                      onFavorite={() => toggleFavorite(product.id)}
-                    />
+                <Box sx={{ display: "grid", gridTemplateColumns: { xs: "repeat(2, 1fr)", lg: "repeat(3, 1fr)", xl: "repeat(4, 1fr)" }, gap: 2 }}>
+                  {visible.map(product => (
+                    <Box key={product.id} sx={{ bgcolor: "#fff", border: "1px solid #eee4e1", borderRadius: 2.5, overflow: "hidden" }}>
+                      <Box sx={{ position: "relative", aspectRatio: "0.88", bgcolor: "#f4efeb" }}>
+                        {product.img ? <Box component="img" src={product.img} alt={product.name} sx={{ width: "100%", height: "100%", objectFit: "cover" }} /> : null}
+                        <Chip label="NEW" size="small" sx={{ position: "absolute", top: 9, left: 9, bgcolor: "#650c20", color: "#fff", fontSize: 9 }} />
+                        <IconButton onClick={() => toggleWishlist(product)} sx={{ position: "absolute", top: 8, right: 8, width: 34, height: 34, bgcolor: "#fff", color: favorites.includes(String(product.id)) ? "#a20d32" : "#650c20" }}>
+                          {favorites.includes(String(product.id)) ? <Favorite sx={{ fontSize: 19 }} /> : <FavoriteBorder sx={{ fontSize: 19 }} />}
+                        </IconButton>
+                      </Box>
+                      <Box sx={{ p: 1.5 }}>
+                        <Typography sx={{ fontSize: 13, fontWeight: 800, minHeight: 36, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{product.name}</Typography>
+                        <Typography sx={{ color: "#650c20", fontWeight: 900, fontSize: 16, mt: 1 }}>₹{formatPrice(product.price)}</Typography>
+                        <Box sx={{ display: "grid", gap: 0.8, mt: 1.5 }}>
+                          <Button variant="outlined" onClick={() => addToCart(product)} startIcon={<ShoppingCartOutlined />} sx={{ borderColor: "#650c20", color: "#650c20", borderRadius: 1.5, fontSize: 11, fontWeight: 800, textTransform: "none" }}>Add to Cart</Button>
+                          <Button variant="contained" onClick={() => addToCart(product, true)} startIcon={<LocalMallOutlined />} sx={{ bgcolor: "#650c20", borderRadius: 1.5, fontSize: 11, fontWeight: 800, textTransform: "none" }}>Order Now</Button>
+                        </Box>
+                      </Box>
+                    </Box>
                   ))}
                 </Box>
-
-                <Editorial />
-
-                <Pagination
-                  page={page}
-                  totalPages={totalPages}
-                  totalItems={filteredProducts.length}
-                  pageSize={pageSize}
-                  onPageChange={setPage}
-                />
               </>
             )}
           </Box>
         </Box>
       </Container>
-
-      <Guarantees />
-      <ValueProps />
     </Box>
   );
 }
-
-/*
-=========================================================
-HERO SECTION
-=========================================================
-*/
-
-function HeroSection() {
-  return (
-    <Box
-      sx={{
-        background:
-          "linear-gradient(90deg,#f5f2ed 0%,#fff1f0 52%,#fbf4df 100%)",
-        borderBottom: "1px solid #e5dfda",
-      }}
-    >
-      <Container maxWidth="xl" sx={{ py: 1.8 }}>
-        <Box
-          sx={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 0.8,
-            backgroundColor: "#fff",
-            borderRadius: 2,
-            px: 1.2,
-            py: 0.6,
-            mb: 1.2,
-            boxShadow: "0 1px 4px #00000012",
-          }}
-        >
-          <Box
-            sx={{
-              width: 9,
-              height: 9,
-              borderRadius: "50%",
-              backgroundColor: "#edd17f",
-              animation: "zinoraBlink 1.2s ease-in-out infinite",
-              "@keyframes zinoraBlink": {
-                "0%, 100%": { opacity: 1 },
-                "50%": { opacity: 0.3 },
-              },
-            }}
-          />
-
-          <Typography
-            sx={{
-              fontSize: 9,
-              letterSpacing: 1,
-              color: "#554242",
-            }}
-          >
-            THE LATEST ZINORA COLLECTION
-          </Typography>
-        </Box>
-
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            gap: 2,
-            flexWrap: "wrap",
-          }}
-        >
-          <Box sx={{ maxWidth: 650 }}>
-            <Typography
-              sx={{
-                fontFamily: "'Playfair Display', Georgia, serif",
-                fontSize: { xs: 30, md: 42 },
-                lineHeight: 1.05,
-                color: "#390009",
-              }}
-            >
-              Fresh Karigari &{" "}
-              <Box
-                component="span"
-                sx={{ fontStyle: "italic", fontWeight: 400 }}
-              >
-                Modern
-                <br />
-                Silhouettes
-              </Box>
-            </Typography>
-
-            <Typography
-              sx={{
-                fontSize: 11,
-                color: "#877272",
-                lineHeight: 1.7,
-                mt: 1,
-                maxWidth: 520,
-              }}
-            >
-              Discover the latest jewellery collection, handcrafted details,
-              elegant finishes and statement designs from Zinora.
-            </Typography>
-          </Box>
-
-          <Box
-            sx={{
-              display: { xs: "none", md: "flex" },
-              gap: 1,
-              flexWrap: "wrap",
-            }}
-          >
-            <AssuranceCard
-              icon={<VerifiedOutlined />}
-              title="PURITY ASSURED"
-              text="Quality Checked"
-            />
-
-            <AssuranceCard
-              icon={<LocalShippingOutlined />}
-              title="EXPRESS DISPATCH"
-              text="Reliable Delivery"
-            />
-          </Box>
-        </Box>
-      </Container>
-    </Box>
-  );
-}
-
-function AssuranceCard({ icon, title, text }) {
-  return (
-    <Box
-      sx={{
-        width: 145,
-        backgroundColor: "#fff",
-        p: 1.2,
-        display: "flex",
-        gap: 0.8,
-        alignItems: "center",
-        borderRadius: 1,
-      }}
-    >
-      <Box sx={{ color: "#735c00", "& svg": { fontSize: 22 } }}>
-        {icon}
-      </Box>
-
-      <Box>
-        <Typography sx={{ fontSize: 8, color: "#877272" }}>
-          {title}
-        </Typography>
-
-        <Typography
-          sx={{ fontSize: 10, fontWeight: 700, color: "#390009" }}
-        >
-          {text}
-        </Typography>
-      </Box>
-    </Box>
-  );
-}
-
-/*
-=========================================================
-TOP FILTER BAR
-=========================================================
-*/
-
-function FilterBar({
-  activeFilter,
-  setActiveFilter,
-  sort,
-  setSort,
-  columns,
-  setColumns,
-  productCount,
-}) {
-  return (
-    <Box
-      sx={{
-        backgroundColor: "#fff",
-        borderBottom: "1px solid #e5dfda",
-        borderTop: "1px solid #e5dfda",
-      }}
-    >
-      <Container maxWidth="xl">
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            gap: 0.8,
-            py: 1,
-            overflowX: "auto",
-            "&::-webkit-scrollbar": { display: "none" },
-          }}
-        >
-          <Typography
-            sx={{ fontSize: 10, color: "#877272", whiteSpace: "nowrap" }}
-          >
-            Home
-          </Typography>
-
-          <ChevronRight sx={{ fontSize: 13, color: "#aaa" }} />
-
-          <Typography
-            sx={{ fontSize: 10, fontWeight: 700, whiteSpace: "nowrap" }}
-          >
-            New Arrivals
-          </Typography>
-
-          <Chip
-            label={`${productCount} Designs`}
-            size="small"
-            sx={{ height: 25, fontSize: 9, ml: 0.5 }}
-          />
-
-          {quickFilters.map((filter) => (
-            <Chip
-              key={filter}
-              label={filter}
-              onClick={() => setActiveFilter(filter)}
-              size="small"
-              sx={{
-                height: 27,
-                fontSize: 9,
-                backgroundColor:
-                  activeFilter === filter ? "#390009" : "#fff",
-                color: activeFilter === filter ? "#fff" : "#554242",
-                border: "1px solid #e5dfda",
-                whiteSpace: "nowrap",
-                cursor: "pointer",
-              }}
-            />
-          ))}
-
-          <Box sx={{ flex: 1, minWidth: 8 }} />
-
-          <IconButton
-            size="small"
-            aria-label="Show three columns"
-            onClick={() => setColumns(3)}
-            sx={{
-              display: { xs: "none", md: "flex" },
-              backgroundColor: columns === 3 ? "#f1ece8" : "transparent",
-            }}
-          >
-            <GridView sx={{ fontSize: 16 }} />
-          </IconButton>
-
-          <IconButton
-            size="small"
-            aria-label="Show four columns"
-            onClick={() => setColumns(4)}
-            sx={{
-              display: { xs: "none", md: "flex" },
-              backgroundColor: columns === 4 ? "#f1ece8" : "transparent",
-            }}
-          >
-            <ViewComfy sx={{ fontSize: 16 }} />
-          </IconButton>
-
-          <FormControl size="small" sx={{ minWidth: 135 }}>
-            <Select
-              value={sort}
-              onChange={(event) => setSort(event.target.value)}
-              sx={{
-                height: 30,
-                fontSize: 10,
-                backgroundColor: "#fff",
-              }}
-            >
-              <MenuItem value="Newest First">Newest First</MenuItem>
-              <MenuItem value="Price Low-High">Price Low-High</MenuItem>
-              <MenuItem value="Price High-Low">Price High-Low</MenuItem>
-            </Select>
-          </FormControl>
-        </Box>
-      </Container>
-    </Box>
-  );
-}
-
-/*
-=========================================================
-SIDEBAR
-=========================================================
-*/
-
-function Sidebar({
-  categories,
-  selectedCategories,
-  toggleCategory,
-  selectedPriceRanges,
-  togglePriceRange,
-  shippingOnly,
-  setShippingOnly,
-  clearFilters,
-}) {
-  const priceRanges = [
-    { label: "Under ₹199", value: "under199" },
-    { label: "₹199 - ₹499", value: "199to499" },
-    { label: "₹499 - ₹999", value: "499to999" },
-    { label: "₹999 & Above", value: "999plus" },
-  ];
-
-  return (
-    <Box sx={{ fontSize: 10 }}>
-      <Box
-        sx={{
-          backgroundColor: "#fff",
-          border: "1px solid #e5dfda",
-          p: 1.5,
-        }}
-      >
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            mb: 1.2,
-          }}
-        >
-          <Typography sx={{ fontSize: 12, fontWeight: 800 }}>
-            Filter By
-          </Typography>
-
-          <Button
-            onClick={clearFilters}
-            sx={{
-              minWidth: 0,
-              p: 0,
-              fontSize: 8,
-              color: "#735c00",
-            }}
-          >
-            CLEAR ALL
-          </Button>
-        </Box>
-
-        <Box
-          sx={{
-            backgroundColor: "#f6f3ee",
-            p: 1,
-            mb: 1.5,
-            display: "flex",
-            alignItems: "center",
-            gap: 0.6,
-          }}
-        >
-          <LocalShippingOutlined sx={{ fontSize: 16, color: "#735c00" }} />
-
-          <Box sx={{ flex: 1 }}>
-            <Typography sx={{ fontSize: 9 }}>In Stock Only</Typography>
-            <Typography sx={{ fontSize: 8, color: "#877272" }}>
-              Available products
-            </Typography>
-          </Box>
-
-          <Switch
-            size="small"
-            checked={shippingOnly}
-            onChange={(event) => setShippingOnly(event.target.checked)}
-            sx={{
-              "& .MuiSwitch-switchBase.Mui-checked": {
-                color: "#390009",
-              },
-              "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": {
-                backgroundColor: "#390009",
-              },
-            }}
-          />
-        </Box>
-
-        <FilterGroup title="JEWELLERY TYPE">
-          {categories.length === 0 ? (
-            <Typography sx={{ fontSize: 9, color: "#877272" }}>
-              No active categories
-            </Typography>
-          ) : (
-            categories.map((category) => (
-              <CheckRow
-                key={category.id}
-                label={category.name}
-                checked={selectedCategories.includes(category.name)}
-                onChange={() => toggleCategory(category.name)}
-              />
-            ))
-          )}
-        </FilterGroup>
-
-        <FilterGroup title="PRICE RANGE">
-          {priceRanges.map((range) => (
-            <CheckRow
-              key={range.value}
-              label={range.label}
-              checked={selectedPriceRanges.includes(range.value)}
-              onChange={() => togglePriceRange(range.value)}
-            />
-          ))}
-        </FilterGroup>
-
-        <FilterGroup title="COLLECTION">
-          <Typography sx={{ fontSize: 9, color: "#877272", lineHeight: 1.7 }}>
-            Use the quick filters above to explore affordable, festive and
-            everyday styles.
-          </Typography>
-        </FilterGroup>
-      </Box>
-
-      <Box
-        sx={{
-          mt: 1,
-          backgroundColor: "#390009",
-          color: "#fff",
-          p: 1.5,
-        }}
-      >
-        <Typography sx={{ fontSize: 8, letterSpacing: 1 }}>
-          ZINORA CONCIERGE
-        </Typography>
-
-        <Typography
-          sx={{
-            fontFamily: "'Playfair Display', Georgia, serif",
-            fontSize: 17,
-            lineHeight: 1.2,
-            mt: 0.7,
-          }}
-        >
-          Find your signature style
-        </Typography>
-
-        <Typography sx={{ fontSize: 9, opacity: 0.8, mt: 0.7 }}>
-          Explore designs for everyday wear and special occasions.
-        </Typography>
-      </Box>
-    </Box>
-  );
-}
-
-function FilterGroup({ title, children }) {
-  return (
-    <Box sx={{ mb: 1.8 }}>
-      <Typography
-        sx={{
-          fontSize: 9,
-          fontWeight: 800,
-          letterSpacing: 1,
-          mb: 0.7,
-        }}
-      >
-        {title}
-      </Typography>
-
-      {children}
-    </Box>
-  );
-}
-
-function CheckRow({ label, checked, onChange }) {
-  return (
-    <Box sx={{ display: "flex", alignItems: "center", mb: 0.4 }}>
-      <Checkbox
-        size="small"
-        checked={checked}
-        onChange={onChange}
-        sx={{
-          p: 0,
-          mr: 0.5,
-          "& svg": { fontSize: 15 },
-        }}
-      />
-
-      <Typography
-        onClick={onChange}
-        sx={{
-          fontSize: 9,
-          flex: 1,
-          lineHeight: 1.4,
-          cursor: "pointer",
-        }}
-      >
-        {label}
-      </Typography>
-    </Box>
-  );
-}
-
-/*
-=========================================================
-PRODUCT CARD
-=========================================================
-*/
-
-function ProductCard({ product, favorite, onFavorite }) {
-  const [imageFailed, setImageFailed] = useState(false);
-
-  const discount = getDiscount(product.price, product.old);
-  const hasImage = Boolean(product.img) && !imageFailed;
-
-  return (
-    <Box
-      sx={{
-        backgroundColor: "#fff",
-        border: "1px solid #e7e1dc",
-        minWidth: 0,
-        position: "relative",
-        overflow: "hidden",
-      }}
-    >
-      <Box
-        sx={{
-          position: "relative",
-          aspectRatio: "0.82",
-          overflow: "hidden",
-          backgroundColor: "#eee9e3",
-        }}
-      >
-        {hasImage ? (
-          <Box
-            component="img"
-            src={product.img}
-            alt={product.name}
-            loading="lazy"
-            onError={() => setImageFailed(true)}
-            sx={{
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-              display: "block",
-            }}
-          />
-        ) : (
-          <Box
-            sx={{
-              width: "100%",
-              height: "100%",
-              display: "grid",
-              placeItems: "center",
-              p: 2,
-              textAlign: "center",
-            }}
-          >
-            <Typography sx={{ fontSize: 11, color: "#877272" }}>
-              Product image unavailable
-            </Typography>
-          </Box>
-        )}
-
-        {product.badge && (
-          <Chip
-            label={product.badge}
-            size="small"
-            sx={{
-              position: "absolute",
-              top: 5,
-              left: 5,
-              height: 20,
-              maxWidth: "75%",
-              backgroundColor: "#390009",
-              color: "#fff",
-              fontSize: 7,
-              fontWeight: 700,
-              borderRadius: 0.3,
-            }}
-          />
-        )}
-
-        <IconButton
-          onClick={onFavorite}
-          size="small"
-          aria-label={favorite ? "Remove from favorites" : "Add to favorites"}
-          sx={{
-            position: "absolute",
-            top: 4,
-            right: 4,
-            backgroundColor: "#fff",
-            width: 28,
-            height: 28,
-            "&:hover": { backgroundColor: "#fff" },
-          }}
-        >
-          {favorite ? (
-            <Favorite sx={{ fontSize: 15, color: "#390009" }} />
-          ) : (
-            <FavoriteBorder sx={{ fontSize: 15 }} />
-          )}
-        </IconButton>
-
-        {discount > 0 && (
-          <Chip
-            label={`${discount}% OFF`}
-            size="small"
-            sx={{
-              position: "absolute",
-              bottom: 5,
-              left: 5,
-              height: 20,
-              backgroundColor: "#fed65b",
-              color: "#390009",
-              fontSize: 8,
-              fontWeight: 700,
-            }}
-          />
-        )}
-
-        {product.stock === 0 && (
-          <Chip
-            label="OUT OF STOCK"
-            size="small"
-            sx={{
-              position: "absolute",
-              bottom: 5,
-              right: 5,
-              height: 20,
-              backgroundColor: "#fff",
-              color: "#390009",
-              fontSize: 7,
-              fontWeight: 700,
-            }}
-          />
-        )}
-      </Box>
-
-      <Box sx={{ p: 1 }}>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 0.4 }}>
-          <Star sx={{ fontSize: 12, color: "#735c00" }} />
-
-          <Typography sx={{ fontSize: 8, color: "#877272" }}>
-            Zinora Collection
-          </Typography>
-        </Box>
-
-        <Typography
-          title={product.name}
-          sx={{
-            fontSize: 11,
-            fontWeight: 700,
-            lineHeight: 1.5,
-            overflow: "hidden",
-            display: "-webkit-box",
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: "vertical",
-            minHeight: 33,
-            mt: 0.4,
-          }}
-        >
-          {product.name}
-        </Typography>
-
-        <Typography
-          title={product.desc}
-          sx={{
-            fontSize: 9,
-            color: "#877272",
-            overflow: "hidden",
-            display: "-webkit-box",
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: "vertical",
-            minHeight: 26,
-            mt: 0.3,
-          }}
-        >
-          {product.desc || product.cat || "Explore this Zinora design"}
-        </Typography>
-
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            flexWrap: "wrap",
-            gap: 0.6,
-            mt: 0.8,
-          }}
-        >
-          <Typography
-            sx={{
-              fontSize: 14,
-              fontWeight: 800,
-              color: "#390009",
-            }}
-          >
-            ₹{formatPrice(product.price)}
-          </Typography>
-
-          {product.old !== null &&
-            product.old !== undefined &&
-            product.old > product.price && (
-              <Typography
-                sx={{
-                  fontSize: 9,
-                  color: "#999",
-                  textDecoration: "line-through",
-                }}
-              >
-                ₹{formatPrice(product.old)}
-              </Typography>
-            )}
-        </Box>
-
-        {product.cat && (
-          <Typography
-            sx={{
-              fontSize: 8,
-              color: "#735c00",
-              mt: 0.5,
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {product.cat}
-          </Typography>
-        )}
-      </Box>
-    </Box>
-  );
-}
-
-/*
-=========================================================
-EDITORIAL
-=========================================================
-*/
-
-function Editorial() {
-  return (
-    <Box
-      sx={{
-        mt: 1.5,
-        backgroundColor: "#eeece8",
-        p: { xs: 1.5, md: 2 },
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        gap: 2,
-        flexWrap: "wrap",
-      }}
-    >
-      <Box>
-        <Typography sx={{ fontSize: 8, color: "#735c00", letterSpacing: 1 }}>
-          THE ZINORA STANDARD
-        </Typography>
-
-        <Typography
-          sx={{
-            fontFamily: "'Playfair Display', Georgia, serif",
-            fontSize: { xs: 16, md: 20 },
-            color: "#390009",
-            mt: 0.4,
-          }}
-        >
-          Jewellery for Every Special Moment
-        </Typography>
-
-        <Typography
-          sx={{
-            fontSize: 9,
-            color: "#877272",
-            mt: 0.5,
-            maxWidth: 580,
-            lineHeight: 1.6,
-          }}
-        >
-          Discover distinctive designs and find pieces that complement your
-          personal style.
-        </Typography>
-      </Box>
-
-      <Button
-        variant="contained"
-        endIcon={<ArrowForward />}
-        onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-        sx={{
-          backgroundColor: "#58111a",
-          fontSize: 10,
-          textTransform: "none",
-          "&:hover": { backgroundColor: "#390009" },
-        }}
-      >
-        Explore Collection
-      </Button>
-    </Box>
-  );
-}
-
-/*
-=========================================================
-DYNAMIC PAGINATION
-=========================================================
-*/
-
-function Pagination({
-  page,
-  totalPages,
-  totalItems,
-  pageSize,
-  onPageChange,
-}) {
-  const start = totalItems === 0 ? 0 : (page - 1) * pageSize + 1;
-  const end = Math.min(page * pageSize, totalItems);
-
-  return (
-    <Box
-      sx={{
-        mt: 1.5,
-        backgroundColor: "#fff",
-        border: "1px solid #e5dfda",
-        p: 1.2,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        gap: 1,
-        flexWrap: "wrap",
-      }}
-    >
-      <Typography sx={{ fontSize: 9, color: "#877272" }}>
-        Showing <b>{start}–{end}</b> of <b>{totalItems}</b> designs
-      </Typography>
-
-      <Box sx={{ display: "flex", gap: 0.4, alignItems: "center" }}>
-        <Button
-          disabled={page <= 1}
-          onClick={() => onPageChange(page - 1)}
-          sx={{
-            minWidth: 35,
-            height: 28,
-            fontSize: 10,
-            color: "#390009",
-          }}
-        >
-          Prev
-        </Button>
-
-        {Array.from({ length: totalPages }, (_, index) => index + 1)
-          .filter(
-            (pageNumber) =>
-              pageNumber === 1 ||
-              pageNumber === totalPages ||
-              Math.abs(pageNumber - page) <= 1
-          )
-          .map((pageNumber, index, array) => (
-            <React.Fragment key={pageNumber}>
-              {index > 0 && pageNumber - array[index - 1] > 1 && (
-                <Typography sx={{ fontSize: 10 }}>...</Typography>
-              )}
-
-              <Button
-                onClick={() => onPageChange(pageNumber)}
-                sx={{
-                  minWidth: 28,
-                  height: 28,
-                  p: 0,
-                  fontSize: 10,
-                  color: page === pageNumber ? "#fff" : "#554242",
-                  backgroundColor:
-                    page === pageNumber ? "#390009" : "#f8f6f3",
-                  "&:hover": {
-                    backgroundColor:
-                      page === pageNumber ? "#58111a" : "#eee8e2",
-                  },
-                }}
-              >
-                {pageNumber}
-              </Button>
-            </React.Fragment>
-          ))}
-
-        <Button
-          disabled={page >= totalPages}
-          onClick={() => onPageChange(page + 1)}
-          sx={{
-            minWidth: 40,
-            height: 28,
-            fontSize: 10,
-            color: "#390009",
-          }}
-        >
-          Next
-        </Button>
-      </Box>
-    </Box>
-  );
-}
-
-
-function Guarantees() {
-  const items = [
-    {
-      title: "Customer-Focused Service",
-      text: "A thoughtful shopping experience from selection to delivery.",
-      Icon: SecurityOutlined,
-    },
-    {
-      title: "Easy Exchange Assistance",
-      text: "Contact our team for help with exchange requests.",
-      Icon: ArrowForward,
-    },
-    {
-      title: "Quality-Conscious Designs",
-      text: "Explore jewellery selected for style and everyday elegance.",
-      Icon: VerifiedOutlined,
-    },
-  ];
-
-  return (
-    <Box sx={{ backgroundColor: "#f5f3f0", py: 2.5, mt: 2 }}>
-      <Container maxWidth="xl">
-        <Box
-          sx={{
-            display: "grid",
-            gridTemplateColumns: {
-              xs: "1fr",
-              md: "repeat(3,1fr)",
-            },
-            gap: 1,
-          }}
-        >
-          {items.map(({ title, text, Icon }, index) => (
-            <Box
-              key={title}
-              sx={{
-                backgroundColor: "#fff",
-                p: 1.5,
-                display: "flex",
-                gap: 1,
-                alignItems: "center",
-              }}
-            >
-              <Box
-                sx={{
-                  width: 36,
-                  height: 36,
-                  flexShrink: 0,
-                  backgroundColor: ["#ffe2e1", "#ffe5a6", "#d4f5df"][index],
-                  display: "grid",
-                  placeItems: "center",
-                  borderRadius: 1,
-                }}
-              >
-                <Icon sx={{ fontSize: 18, color: "#390009" }} />
-              </Box>
-
-              <Box>
-                <Typography
-                  sx={{ fontSize: 10, fontWeight: 700, color: "#390009" }}
-                >
-                  {title}
-                </Typography>
-
-                <Typography
-                  sx={{ fontSize: 9, color: "#877272", lineHeight: 1.5 }}
-                >
-                  {text}
-                </Typography>
-              </Box>
-            </Box>
-          ))}
-        </Box>
-      </Container>
-    </Box>
-  );
-}
-
-/*
-=========================================================
-VALUE PROPOSITIONS
-=========================================================
-*/
-
-function ValueProps() {
-  const items = [
-    {
-      title: "Thoughtful Designs",
-      text: "Explore styles suited to daily wear and special occasions.",
-      Icon: SecurityOutlined,
-    },
-    {
-      title: "A Collection for Every Occasion",
-      text: "Browse the latest designs added to the Zinora catalogue.",
-      Icon: VerifiedOutlined,
-    },
-    {
-      title: "Celebrating Indian Craftsmanship",
-      text: "Discover jewellery inspired by traditional and modern styles.",
-      Icon: HandshakeOutlined,
-    },
-  ];
-
-  return (
-    <Box sx={{ backgroundColor: "#fff", py: 4 }}>
-      <Container maxWidth="xl">
-        <Box
-          sx={{
-            display: "grid",
-            gridTemplateColumns: {
-              xs: "1fr",
-              md: "repeat(3,1fr)",
-            },
-          }}
-        >
-          {items.map(({ title, text, Icon }) => (
-            <Box
-              key={title}
-              sx={{
-                textAlign: "center",
-                py: 1.8,
-                px: 2,
-              }}
-            >
-              <Icon sx={{ fontSize: 26, color: "#735c00" }} />
-
-              <Typography
-                sx={{
-                  fontSize: 11,
-                  fontWeight: 700,
-                  color: "#390009",
-                  mt: 0.5,
-                }}
-              >
-                {title}
-              </Typography>
-
-              <Typography
-                sx={{
-                  fontSize: 9,
-                  color: "#877272",
-                  maxWidth: 280,
-                  mx: "auto",
-                  lineHeight: 1.6,
-                  mt: 0.5,
-                }}
-              >
-                {text}
-              </Typography>
-            </Box>
-          ))}
-        </Box>
-      </Container>
-    </Box>
-  );
-}
-
-export default NewArrivals;
