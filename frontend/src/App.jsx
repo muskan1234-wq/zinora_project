@@ -1,11 +1,16 @@
 import React from "react";
-import { Routes, Route, useLocation, Navigate } from "react-router-dom";
+import {
+  Routes,
+  Route,
+  useLocation,
+  Navigate,
+} from "react-router-dom";
 
-// Common Components
+// Common components
 import Topbar from "./component/topbar";
 import Footer from "./component/Footer";
 
-// Customer Pages
+// Customer pages
 import Home from "./assets/pages/Home";
 import NewArrivals from "./assets/pages/NewArrivals";
 import Necklaces from "./assets/pages/Necklaces";
@@ -19,17 +24,15 @@ import Wishlist from "./assets/pages/Wishlist";
 import Profile from "./assets/pages/Profile";
 import ChatTrack from "./assets/pages/ChatTrack";
 import Cart from "./assets/pages/Cart";
-
-
-
 import Checkout from "./assets/pages/Checkout";
 import OrderSuccess from "./assets/pages/OrderSuccess";
-// Authentication Pages
+
+// Authentication pages
 import Register from "./assets/pages/Admin/Register";
 import Login from "./assets/pages/Customer/Login";
 import Notifications from "./assets/pages/Admin/Notifications";
 
-// Admin Pages
+// Admin pages
 import AdminDashboard from "./assets/pages/Admin/AdminDashboard";
 import DashboardHome from "./assets/pages/Admin/DashboardHome";
 import Products from "./assets/pages/Admin/Products";
@@ -41,14 +44,54 @@ import AdminOffers from "./assets/pages/Admin/Offers";
 import Inventory from "./assets/pages/Admin/Inventory";
 import Settings from "./assets/pages/Admin/Settings";
 
+const getCustomerToken = () =>
+  localStorage.getItem("zinoraCustomerToken") ||
+  (localStorage.getItem("zinoraRole") === "CUSTOMER"
+    ? localStorage.getItem("zinoraToken")
+    : null);
+
+const getAdminToken = () =>
+  localStorage.getItem("zinoraAdminToken") ||
+  (localStorage.getItem("zinoraRole") === "ADMIN"
+    ? localStorage.getItem("zinoraToken")
+    : null);
+
+function CustomerRoute({ children }) {
+  const location = useLocation();
+  const role =
+    localStorage.getItem("zinoraCustomerRole") ||
+    localStorage.getItem("zinoraRole");
+
+  if (!getCustomerToken() || role !== "CUSTOMER") {
+    return (
+      <Navigate
+        to="/register"
+        replace
+        state={{ from: location }}
+      />
+    );
+  }
+
+  return children;
+}
+
+function AdminRoute({ children }) {
+  const role =
+    localStorage.getItem("zinoraAdminRole") ||
+    localStorage.getItem("zinoraRole");
+
+  if (!getAdminToken() || role !== "ADMIN") {
+    return <Navigate to="/admin/login" replace />;
+  }
+
+  return children;
+}
+
 function App() {
   const location = useLocation();
-
-  // Normalize the URL path
   const pathname = location.pathname.replace(/\/+$/, "") || "/";
+  const role = localStorage.getItem("zinoraRole");
 
-  // Hide customer header/footer on authentication and profile pages.
-  // Admin dashboard has its own layout.
   const hideLayoutPaths = [
     "/register",
     "/login",
@@ -59,46 +102,166 @@ function App() {
   ];
 
   const isAdminPage = pathname.startsWith("/admin/dashboard");
-
   const hideLayout = hideLayoutPaths.includes(pathname) || isAdminPage;
+
+  const initialRoute = () => {
+    if (role === "CUSTOMER" && getCustomerToken()) return "/home";
+    if (role === "ADMIN" && getAdminToken()) return "/admin/dashboard";
+    return "/register";
+  };
 
   return (
     <>
       {!hideLayout && <Topbar />}
 
       <Routes>
-        {/* Main website opens at Home */}
-<Route path="*" element={<Navigate to="/register" replace />} />
-        {/* Customer Authentication */}
+        {/* First visit: register. Existing authenticated users go to their dashboard. */}
+        <Route
+          path="/"
+          element={<Navigate to={initialRoute()} replace />}
+        />
+
+        {/* Customer authentication */}
         <Route path="/register" element={<Register />} />
         <Route path="/login" element={<Login />} />
-<Route path="/checkout" element={<Checkout />} />
-<Route path="/order-success" element={<OrderSuccess />} />
-        {/* Admin Login */}
+
+        {/* Public storefront preview for the admin dashboard button.
+            Keep this OUTSIDE CustomerRoute so admin can view the storefront. */}
+        <Route path="/store" element={<Home />} />
+
+        {/* Customer website pages */}
+        <Route
+          path="/home"
+          element={
+            <CustomerRoute>
+              <Home />
+            </CustomerRoute>
+          }
+        />
+        <Route
+          path="/new-arrivals"
+          element={
+            <CustomerRoute>
+              <NewArrivals />
+            </CustomerRoute>
+          }
+        />
+        <Route
+          path="/necklaces"
+          element={
+            <CustomerRoute>
+              <Necklaces />
+            </CustomerRoute>
+          }
+        />
+        <Route
+          path="/earrings"
+          element={
+            <CustomerRoute>
+              <Earrings />
+            </CustomerRoute>
+          }
+        />
+        <Route
+          path="/rings"
+          element={
+            <CustomerRoute>
+              <Rings />
+            </CustomerRoute>
+          }
+        />
+        <Route
+          path="/bangles"
+          element={
+            <CustomerRoute>
+              <Bangles />
+            </CustomerRoute>
+          }
+        />
+        <Route
+          path="/bridal-festive"
+          element={
+            <CustomerRoute>
+              <BridalFestive />
+            </CustomerRoute>
+          }
+        />
+        <Route
+          path="/offers"
+          element={
+            <CustomerRoute>
+              <CustomerOffers />
+            </CustomerRoute>
+          }
+        />
+        <Route
+          path="/OtherProducts"
+          element={
+            <CustomerRoute>
+              <OtherProducts />
+            </CustomerRoute>
+          }
+        />
+        <Route
+          path="/wishlist"
+          element={
+            <CustomerRoute>
+              <Wishlist />
+            </CustomerRoute>
+          }
+        />
+        <Route
+          path="/cart"
+          element={
+            <CustomerRoute>
+              <Cart />
+            </CustomerRoute>
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            <CustomerRoute>
+              <Profile />
+            </CustomerRoute>
+          }
+        />
+        <Route
+          path="/chat-track"
+          element={
+            <CustomerRoute>
+              <ChatTrack />
+            </CustomerRoute>
+          }
+        />
+        <Route
+          path="/checkout"
+          element={
+            <CustomerRoute>
+              <Checkout />
+            </CustomerRoute>
+          }
+        />
+        <Route
+          path="/order-success"
+          element={
+            <CustomerRoute>
+              <OrderSuccess />
+            </CustomerRoute>
+          }
+        />
+
+        {/* Admin authentication and dashboard */}
         <Route path="/admin/login" element={<Login />} />
-      
-
-        {/* Customer Website Pages */}
-        <Route path="/" element={<Home />} />
-        <Route path="/new-arrivals" element={<NewArrivals />} />
-        <Route path="/necklaces" element={<Necklaces />} />
-        <Route path="/earrings" element={<Earrings />} />
-        <Route path="/rings" element={<Rings />} />
-        <Route path="/bangles" element={<Bangles />} />
-        <Route path="/bridal-festive" element={<BridalFestive />} />
-        <Route path="/offers" element={<CustomerOffers />} />
-        <Route path="/OtherProducts" element={<OtherProducts />} />
-
-        {/* Wishlist, Cart and Customer Account */}
-        <Route path="/wishlist" element={<Wishlist />} />
-        <Route path="/cart" element={<Cart />} />
-        <Route path="/profile" element={<Profile />} />
-        <Route path="/chat-track" element={<ChatTrack />} />
-
-        {/* Admin Dashboard with Nested Pages */}
-        <Route path="/admin/dashboard" element={<AdminDashboard />}>
+        <Route
+          path="/admin/dashboard"
+          element={
+            <AdminRoute>
+              <AdminDashboard />
+            </AdminRoute>
+          }
+        >
           <Route index element={<DashboardHome />} />
-
           <Route path="home" element={<DashboardHome />} />
           <Route path="products" element={<Products />} />
           <Route path="categories" element={<Categories />} />
@@ -111,13 +274,13 @@ function App() {
           <Route path="notifications" element={<Notifications />} />
         </Route>
 
-        {/* Old Admin Dashboard URL Redirect */}
+        {/* Legacy admin dashboard URL */}
         <Route
           path="/admin-dashboard"
           element={<Navigate to="/admin/dashboard" replace />}
         />
 
-        {/* Unknown URLs return to the main website */}
+        {/* Unknown paths go to the correct starting page */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
 

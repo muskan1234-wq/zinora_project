@@ -21,7 +21,8 @@ import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 
-const REGISTER_API = "http://127.0.0.1:8000/api/accounts/register/";
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000").replace(/\/+$/, "");
+const REGISTER_API = `${API_BASE_URL}/api/accounts/register/`;
 
 const Register = () => {
 const navigate = useNavigate();
@@ -190,7 +191,7 @@ try {
   console.error("Registration API error:", err);
 
   setError(
-    "Unable to connect to Django. Please make sure the backend server is running on port 8000."
+    "Unable to connect to the server. Please check your internet connection and try again."
   );
 } finally {
   setLoading(false);
