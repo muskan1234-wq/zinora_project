@@ -431,7 +431,7 @@ https://github.com/muskan1234-wq
 
 ---
 
-## ❤️ Acknowledgements
+##  Acknowledgements
 
 A big thank you to every team member for their dedication, creativity, collaboration, and support throughout the project.
 
