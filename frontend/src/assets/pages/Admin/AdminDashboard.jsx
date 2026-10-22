@@ -194,7 +194,7 @@ function AdminDashboard() {
             <Typography sx={{ fontWeight: 800, fontSize: { xs: 14, md: 18 }, color: MAROON }}>{selectedMenu === "Dashboard" ? "Dashboard Overview" : selectedMenu}</Typography>
             <Typography sx={{ fontSize: 10, color: "#968a8d", mt: 0.3 }}>Zinora / {selectedMenu}</Typography>
           </Box>
-          <Button variant="outlined" startIcon={<OpenInNewIcon />} onClick={() => window.open(`${window.location.origin}/`, "_blank", "noopener,noreferrer")} sx={{ flexShrink: 0, textTransform: "none", whiteSpace: "nowrap", borderRadius: 2, px: { xs: 1, md: 1.5 }, py: 0.9, fontSize: { xs: 10, md: 12 }, color: MAROON, borderColor: MAROON, fontWeight: 700, "&:hover": { backgroundColor: "#f8edf0", borderColor: MAROON } }}>View Customer Website</Button>
+          <Button variant="outlined" startIcon={<OpenInNewIcon />} onClick={() => window.open("/store", "_blank", "noopener,noreferrer")} sx={{ flexShrink: 0, textTransform: "none", whiteSpace: "nowrap", borderRadius: 2, px: { xs: 1, md: 1.5 }, py: 0.9, fontSize: { xs: 10, md: 12 }, color: MAROON, borderColor: MAROON, fontWeight: 700, "&:hover": { backgroundColor: "#f8edf0", borderColor: MAROON } }}>View Customer Website</Button>
           <Box sx={{ display: { xs: "none", sm: "flex" }, alignItems: "center", backgroundColor: "#f8f5f3", px: 1.2, borderRadius: 2, flexGrow: 1, minWidth: 80, maxWidth: 250, ml: "auto" }}>
             <SearchIcon sx={{ color: "#94878a", fontSize: 20 }} />
             <InputBase placeholder="Search..." value={search} onChange={(e) => setSearch(e.target.value)} sx={{ ml: 1, fontSize: 12, width: "100%" }} />
