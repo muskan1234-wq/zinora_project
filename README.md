@@ -371,7 +371,7 @@ ZINORA was developed collaboratively by our team.
 * Vidyashri Chendake
 * Pratiksha Aware
 * Rutuja Mane
-* Basawaraj Maddi
+* Basavaraj Maddi
 
 ### 🎨 Website Designer and Tester
 
